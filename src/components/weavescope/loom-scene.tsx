@@ -151,13 +151,15 @@ function buildYarn(count: number, palette: Palette, seed: number, radial: number
   const perBundle = Math.max(3, Math.round(count / bundles));
 
   for (let b = 0; b < bundles; b++) {
-    const lane = (b / Math.max(1, bundles - 1) - 0.5) * 3.1;
-    const depth = (rand() - 0.5) * 1.9;
-    const bendA = 0.18 + rand() * 0.24;
-    const bendF = 0.55 + rand() * 0.5;
+    // Widely spaced and shallow in Z. The point of this beat is to read the
+    // helix, and bundles stacked in depth just occlude each other.
+    const lane = (b / Math.max(1, bundles - 1) - 0.5) * 2.5;
+    const depth = (rand() - 0.5) * 0.9;
+    const bendA = 0.1 + rand() * 0.14;
+    const bendF = 0.45 + rand() * 0.35;
     const bendP = rand() * Math.PI * 2;
-    const bundleR = 0.085 + rand() * 0.05;
-    const turns = 4 + Math.floor(rand() * 3);
+    const bundleR = 0.135 + rand() * 0.05;
+    const turns = 6 + Math.floor(rand() * 3);
 
     for (let f = 0; f < perBundle; f++) {
       const phase = (f / perBundle) * Math.PI * 2 + rand() * 0.35;
@@ -176,7 +178,7 @@ function buildYarn(count: number, palette: Palette, seed: number, radial: number
       }
 
       const curve = new THREE.CatmullRomCurve3(pts, false, "catmullrom", 0.5);
-      const tube = new THREE.TubeGeometry(curve, SEG * 2, 0.017 + rand() * 0.011, radial, false);
+      const tube = new THREE.TubeGeometry(curve, SEG * 2, 0.024 + rand() * 0.011, radial, false);
       tubes.push(tint(tube, palette.tones[Math.floor(rand() * palette.tones.length)]!));
     }
   }
@@ -213,7 +215,7 @@ function Field({
   const geos = useMemo(
     () => ({
       fibre: buildFibre(filaments, palette, seed, radial),
-      yarn: buildYarn(filaments, palette, seed, radial, quality === "high" ? 7 : 5),
+      yarn: buildYarn(filaments, palette, seed, radial, quality === "high" ? 4 : 3),
     }),
     [filaments, palette, seed, radial, quality],
   );
@@ -250,9 +252,9 @@ function Field({
       THREE.MathUtils.clamp(1 - Math.abs(p - centre) / width, 0, 1);
     const soft = (v: number) => v * v * (3 - 2 * v);
 
-    const wNeedle = soft(band(0.0, 0.34));
+    const wNeedle = soft(band(0.0, 0.28));
     const oFibre = soft(band(0.42, 0.3));
-    const oYarn = soft(band(0.58, 0.26));
+    const oYarn = soft(band(0.63, 0.19));
 
     if (fibreMat.current) fibreMat.current.opacity = oFibre;
     if (yarnMat.current) yarnMat.current.opacity = oYarn;
@@ -285,17 +287,21 @@ function Field({
     }
 
     if (fibreRef.current) {
-      fibreRef.current.visible = oFibre > 0.01;
-      fibreRef.current.position.z = 1.4 - p * 2.4;
+      // Culled well before it is invisible: a 3% ghost still writes depth and
+      // still tangles through whatever is coming forward.
+      fibreRef.current.visible = oFibre > 0.06;
+      fibreRef.current.position.z = 1.6 - p * 4.4;
       fibreRef.current.rotation.z = Math.sin(t * 0.09) * 0.035;
       fibreRef.current.position.x = Math.sin(t * 0.07) * 0.12;
     }
 
     if (yarnRef.current) {
-      yarnRef.current.visible = oYarn > 0.01;
-      yarnRef.current.position.z = 2.2 - p * 2.2;
-      yarnRef.current.rotation.x = 0.06 + Math.sin(t * 0.11) * 0.025;
-      yarnRef.current.rotation.z = Math.sin(t * 0.08 + 1) * 0.025;
+      yarnRef.current.visible = oYarn > 0.06;
+      // Starts behind the fibre and arrives in front of it, so the handoff
+      // reads as the camera moving through rather than as a dissolve.
+      yarnRef.current.position.z = 3.4 - p * 4.2;
+      yarnRef.current.rotation.x = 0.05 + Math.sin(t * 0.11) * 0.02;
+      yarnRef.current.rotation.z = Math.sin(t * 0.08 + 1) * 0.02;
     }
 
     // Camera follows the already-damped value, so this can track tightly

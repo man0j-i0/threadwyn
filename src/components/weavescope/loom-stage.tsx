@@ -42,17 +42,17 @@ function buildStages(opts: {
       body: `Every metre of ${opts.productName} starts here — a single plied cord, the colour it will actually ship in.`,
     },
     {
-      at: 0.26,
+      at: 0.28,
       label: "Fibre",
       body: `Unravelled, it is thousands of loose filaments. On their own they have almost no strength; individually they would pull apart in your fingers.`,
     },
     {
-      at: 0.5,
+      at: 0.55,
       label: "Twist",
       body: `Spun together, they grip. Twist is the whole trick — it is what turns loose fibre into a yarn that can take a loom's tension at ${opts.endsPerCm} ends per centimetre.`,
     },
     {
-      at: 0.8,
+      at: 0.84,
       label: "Cloth",
       body: `${WEAVE_LABELS[opts.weave]} — ${opts.interlacing}, ${opts.picksPerCm} picks per centimetre. ${opts.composition}, ${opts.gsm} gsm. This is the swatch you'd see on the product page, rendered from these exact specs.`,
     },
@@ -111,9 +111,9 @@ export function LoomStage({
   // component the cards and the product page use, so the sequence lands on the
   // exact image a buyer sees everywhere else. Driven by MotionValues rather
   // than state so scrolling never triggers a React render.
-  const swatchOpacity = useTransform(scrollYProgress, [0.68, 0.82], [0, 1]);
-  const swatchScale = useTransform(scrollYProgress, [0.68, 1], [1.14, 1]);
-  const canvasOpacity = useTransform(scrollYProgress, [0.66, 0.8], [1, 0]);
+  const swatchOpacity = useTransform(scrollYProgress, [0.78, 0.9], [0, 1]);
+  const swatchScale = useTransform(scrollYProgress, [0.78, 1], [1.12, 1]);
+  const canvasOpacity = useTransform(scrollYProgress, [0.76, 0.88], [1, 0]);
 
   useMotionValueEvent(scrollYProgress, "change", (v) => {
     progress.current = v;
