@@ -24,8 +24,7 @@ import { ButtonLink } from "@/components/ui/button";
 import { LogoGlyph } from "@/components/brand/logo";
 import { useSpeech } from "@/components/ai/use-voice";
 import { LoomStage } from "./loom-stage";
-import { YarnView } from "./yarn-view";
-import { FibreView } from "./fibre-view";
+import { ScopeFigure } from "./scope-figure";
 
 export type ScopeProduct = {
   id: string;
@@ -155,11 +154,15 @@ export function WeaveScope({ product }: { product: ScopeProduct }) {
         lede={WEAVE_NOTES[product.weave]}
       >
         <div className="grid gap-6 lg:grid-cols-[1fr_1.25fr] lg:items-center">
-          <div className="overflow-hidden rounded-[var(--radius-xl)] border border-line bg-canvas-veil p-1.5">
-            <div className="aspect-square overflow-hidden rounded-[calc(var(--radius-xl)-9px)]">
-              <YarnView weave={product.weave} hex={colour} seed={product.id} className="size-full" />
-            </div>
-          </div>
+          <ScopeFigure
+            weave={product.weave}
+            hex={colour}
+            gsm={product.gsm}
+            seed={product.id}
+            magnify={3.4}
+            alt={`${product.name} weave structure, enlarged`}
+            caption={`${WEAVE_LABELS[product.weave]} · approx. ${construction.threadsPerInch} threads per inch`}
+          />
 
           <div>
             <div className="grid grid-cols-2 gap-3 sm:gap-4">
@@ -222,17 +225,16 @@ export function WeaveScope({ product }: { product: ScopeProduct }) {
       {/* ========================================================= FIBRE */}
       <Section eyebrow="The material itself" title={`${fibre.label} under magnification`} lede={fibre.note}>
         <div className="grid gap-6 lg:grid-cols-[1fr_1.15fr] lg:items-center">
-          <div className="overflow-hidden rounded-[var(--radius-xl)] border border-line bg-canvas-veil p-1.5">
-            <div className="aspect-4/3 overflow-hidden rounded-[calc(var(--radius-xl)-9px)]">
-              <FibreView
-                fibre={fibre}
-                hex={colour}
-                seed={`${product.id}-detail`}
-                className="size-full"
-                count={4}
-              />
-            </div>
-          </div>
+          <ScopeFigure
+            weave={product.weave}
+            hex={colour}
+            gsm={product.gsm}
+            seed={`${product.id}-fibre`}
+            magnify={7}
+            aspect="wide"
+            alt={`${product.name} at fibre scale`}
+            caption={`${fibre.label} · ${fibre.diameterUm[0]}–${fibre.diameterUm[1]} µm per filament`}
+          />
 
           <dl className="grid gap-4 sm:grid-cols-2">
             <Detail label="Fibre" value={fibre.label} />
