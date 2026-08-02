@@ -2,7 +2,7 @@
 
 import dynamic from "next/dynamic";
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
-import { useMotionValueEvent, useReducedMotion, useScroll } from "motion/react";
+import { motion, useMotionValueEvent, useReducedMotion, useScroll, useTransform } from "motion/react";
 import { ArrowDown } from "@phosphor-icons/react";
 
 import { cn } from "@/lib/utils";
@@ -38,28 +38,23 @@ function buildStages(opts: {
   return [
     {
       at: 0,
-      label: "The warp",
-      body: `${opts.endsPerCm} ends per centimetre, strung the full length of the loom and held under tension by the reed. Nothing has been woven yet.`,
+      label: "One thread",
+      body: `Every metre of ${opts.productName} starts here — a single plied cord, the colour it will actually ship in.`,
     },
     {
-      at: 0.12,
-      label: "The first pick",
-      body: "The shed opens — half the warp lifts, half stays down — and the shuttle flies through the gap carrying the weft.",
+      at: 0.26,
+      label: "Fibre",
+      body: `Unravelled, it is thousands of loose filaments. On their own they have almost no strength; individually they would pull apart in your fingers.`,
     },
     {
-      at: 0.4,
-      label: "Interlacing",
-      body: `${WEAVE_LABELS[opts.weave]}: ${opts.interlacing}. Which ends lift on each pick is the entire difference between one cloth and another.`,
+      at: 0.5,
+      label: "Twist",
+      body: `Spun together, they grip. Twist is the whole trick — it is what turns loose fibre into a yarn that can take a loom's tension at ${opts.endsPerCm} ends per centimetre.`,
     },
     {
-      at: 0.68,
-      label: "Beat-up",
-      body: `The reed drives each pick tight against the last. ${opts.picksPerCm} picks per centimetre is what turns loose thread into cloth.`,
-    },
-    {
-      at: 0.9,
+      at: 0.8,
       label: "Cloth",
-      body: `${opts.productName} — ${opts.composition}, ${opts.gsm} gsm. Every crossing you just watched, repeated a few million times.`,
+      body: `${WEAVE_LABELS[opts.weave]} — ${opts.interlacing}, ${opts.picksPerCm} picks per centimetre. ${opts.composition}, ${opts.gsm} gsm. This is the swatch you'd see on the product page, rendered from these exact specs.`,
     },
   ];
 }
@@ -111,6 +106,14 @@ export function LoomStage({
     target: wrapRef,
     offset: ["start start", "end end"],
   });
+
+  // The finale hands off from WebGL to the actual product swatch — the same
+  // component the cards and the product page use, so the sequence lands on the
+  // exact image a buyer sees everywhere else. Driven by MotionValues rather
+  // than state so scrolling never triggers a React render.
+  const swatchOpacity = useTransform(scrollYProgress, [0.68, 0.82], [0, 1]);
+  const swatchScale = useTransform(scrollYProgress, [0.68, 1], [1.14, 1]);
+  const canvasOpacity = useTransform(scrollYProgress, [0.66, 0.8], [1, 0]);
 
   useMotionValueEvent(scrollYProgress, "change", (v) => {
     progress.current = v;
@@ -205,15 +208,24 @@ export function LoomStage({
         </div>
 
         {mounted && inView ? (
-          <div
+          <motion.div
+            style={{ opacity: canvasOpacity }}
             className={cn(
               "absolute inset-0 transition-opacity duration-1000 ease-[var(--ease-out-expo)]",
               ready ? "opacity-100" : "opacity-0",
             )}
           >
-            <LoomScene weave={weave} hex={hex} progress={progress} quality={quality} />
-          </div>
+            <LoomScene weave={weave} hex={hex} gsm={gsm} seed={seed} progress={progress} quality={quality} />
+          </motion.div>
         ) : null}
+
+        {/* The finished cloth: the real catalogue swatch, not a 3D stand-in. */}
+        <motion.div
+          style={{ opacity: swatchOpacity, scale: swatchScale }}
+          className="pointer-events-none absolute inset-0 will-change-transform"
+        >
+          <FabricSwatch weave={weave} hex={hex} gsm={gsm} seed={seed} alt={`${productName} swatch`} />
+        </motion.div>
 
         {/* Vignette so the type never sits on a busy patch of thread. */}
         <div

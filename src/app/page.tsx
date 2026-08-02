@@ -24,6 +24,7 @@ import { ButtonLink } from "@/components/ui/button";
 import { SectionHeading } from "@/components/ui/card";
 import { Reveal, Stagger, StaggerItem, MaskedHeading } from "@/components/motion/reveal";
 import { AssistantDock } from "@/components/ai/assistant-dock";
+import { HeroCluster, type HeroSwatch } from "@/components/weavescope/hero-cluster";
 import type { WeaveKey } from "@/lib/weave";
 
 export const revalidate = 60;
@@ -172,72 +173,20 @@ export default async function LandingPage() {
               </Reveal>
             </div>
 
-            {/* Z-axis cascade of real rendered swatches. Rotations and overlaps
-                are stripped below lg so nothing collides on a phone. */}
-            {/* Each card is a door into that fabric's loom. Rotations and
-                overlaps are stripped below lg so nothing collides on a phone. */}
+            {/* The one place WeaveScope is offered. One shared cursor for the
+                whole cluster; the card you click picks the fabric. */}
             <Reveal delay={0.3} y={28} className="relative hidden lg:block">
-              <div className="relative mx-auto h-[34rem] w-full max-w-lg">
-                {heroSwatches.map((s, i) => {
-                  const layout = [
-                    "left-0 top-6 w-56 rotate-[-6deg]",
-                    "left-40 top-0 w-64 rotate-[3deg] z-20",
-                    "right-0 top-40 w-52 rotate-[7deg] z-10",
-                    "left-4 top-64 w-60 rotate-[2deg] z-30",
-                    "right-6 bottom-0 w-48 rotate-[-4deg] z-20",
-                  ][i]!;
-                  return (
-                    <Link
-                      key={s.id}
-                      href={`/weavescope/${s.slug}`}
-                      style={{ animationDelay: `${0.35 + i * 0.11}s` }}
-                      aria-label={`Look inside ${s.name} — watch it being woven`}
-                      className={`group/hero animate-fade-up absolute ${layout} block rounded-[var(--radius-lg)] border border-line bg-surface p-1.5 shadow-[var(--shadow-lg)] transition-[transform,box-shadow,border-color] duration-700 ease-[var(--ease-out-expo)] hover:-translate-y-2 hover:rotate-0 hover:border-brand hover:shadow-[var(--shadow-xl)] focus-visible:-translate-y-2 focus-visible:rotate-0`}
-                    >
-                      <div className="relative aspect-square overflow-hidden rounded-[calc(var(--radius-lg)-8px)]">
-                        <FabricSwatch
-                          weave={s.weave as WeaveKey}
-                          hex={s.colorways[0]?.hex ?? "#C9C2B4"}
-                          gsm={s.gsm}
-                          seed={s.id}
-                          alt={`${s.name} swatch`}
-                          priority
-                        />
-
-                        {/* The reticle resolves on hover — a loupe mark, not a
-                            generic info glyph. */}
-                        <span className="absolute inset-0 grid place-items-center bg-[#14120f]/0 transition-colors duration-500 group-hover/hero:bg-[#14120f]/45 group-focus-visible/hero:bg-[#14120f]/45">
-                          <span className="flex scale-90 items-center gap-2 rounded-full border border-white/30 bg-[#14120f]/70 px-3.5 py-2 opacity-0 backdrop-blur-md transition-[opacity,transform] duration-500 ease-[var(--ease-spring)] group-hover/hero:scale-100 group-hover/hero:opacity-100 group-focus-visible/hero:scale-100 group-focus-visible/hero:opacity-100">
-                            <span className="relative grid size-4 place-items-center text-white">
-                              <span className="absolute inset-0 rounded-full border border-current opacity-50 motion-safe:animate-ping motion-safe:[animation-duration:2s]" />
-                              <svg viewBox="0 0 16 16" fill="none" className="relative size-full">
-                                <circle cx="8" cy="8" r="6.25" stroke="currentColor" strokeWidth="1.1" />
-                                <circle cx="8" cy="8" r="2.25" stroke="currentColor" strokeWidth="1.1" strokeOpacity="0.7" />
-                                <g stroke="currentColor" strokeWidth="1.1" strokeLinecap="round">
-                                  <line x1="8" y1="0.75" x2="8" y2="2.6" />
-                                  <line x1="8" y1="13.4" x2="8" y2="15.25" />
-                                  <line x1="0.75" y1="8" x2="2.6" y2="8" />
-                                  <line x1="13.4" y1="8" x2="15.25" y2="8" />
-                                </g>
-                              </svg>
-                            </span>
-                            <span className="text-[11.5px] font-medium whitespace-nowrap text-white">
-                              Look inside
-                            </span>
-                          </span>
-                        </span>
-                      </div>
-
-                      <div className="px-2 pt-2.5 pb-1.5">
-                        <p className="truncate text-[12px] font-medium text-ink">{s.name}</p>
-                        <p className="mt-0.5 truncate font-mono text-[10px] text-subtle">
-                          {s.gsm} gsm · {s.composition}
-                        </p>
-                      </div>
-                    </Link>
-                  );
-                })}
-              </div>
+              <HeroCluster
+                swatches={heroSwatches.map<HeroSwatch>((s) => ({
+                  id: s.id,
+                  slug: s.slug,
+                  name: s.name,
+                  weave: s.weave as WeaveKey,
+                  gsm: s.gsm,
+                  composition: s.composition,
+                  hex: s.colorways[0]?.hex ?? "#C9C2B4",
+                }))}
+              />
             </Reveal>
           </div>
 

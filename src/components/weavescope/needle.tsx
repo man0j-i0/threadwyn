@@ -67,14 +67,17 @@ export function Needle({
 
   const material = useMemo(
     () =>
+      // Slightly rougher than a mirror on purpose. A razor-thin specular on a
+      // thin cylinder is exactly what aliases into a pixelated sparkle; a
+      // broader highlight resolves cleanly at any resolution.
       new THREE.MeshPhysicalMaterial({
         color: metal,
         metalness: 1,
-        roughness: 0.14,
+        roughness: 0.26,
         envMap,
-        envMapIntensity: 1.5,
-        clearcoat: 0.5,
-        clearcoatRoughness: 0.1,
+        envMapIntensity: 1.25,
+        clearcoat: 0.35,
+        clearcoatRoughness: 0.28,
       }),
     [envMap, metal],
   );

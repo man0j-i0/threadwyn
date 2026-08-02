@@ -3,6 +3,7 @@
 import { useMemo, useRef } from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { DepthOfField, EffectComposer, Vignette } from "@react-three/postprocessing";
+import type { DepthOfFieldEffect } from "postprocessing";
 import * as THREE from "three";
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
 
@@ -14,13 +15,15 @@ import { Cord, Needle } from "./needle";
 /**
  * The filament field.
  *
- * Three arrangements of the same threads, crossfaded as you scroll:
+ * Three beats, crossfaded as you scroll:
  *
+ *   needle a threaded needle, hero-lit, cord in this fabric's colour
  *   fibre  loose filaments drifting free, before anything holds them together
  *   yarn   the same filaments spiralling into bundles — twist is what turns
  *          loose fibre into something with tensile strength
- *   cloth  the bundles straightened into warp and weft, interlacing on this
- *          fabric's actual lift plan
+ *
+ * The sequence then hands off to the real product swatch in the DOM, so it
+ * lands on the exact image a buyer sees everywhere else in the catalogue.
  *
  * Everything is generated from the product's spec — filament count follows GSM,
  * the palette is stepped from the colourway, and the interlacing follows the
@@ -67,32 +70,6 @@ function rng(seed: number) {
     s = (s * 1664525 + 1013904223) >>> 0;
     return s / 4294967296;
   };
-}
-
-function warpOnTop(weave: WeaveKey, col: number, row: number): boolean {
-  switch (weave) {
-    case "PLAIN":
-    case "CREPE":
-    case "JERSEY":
-      return (col + row) % 2 === 0;
-    case "CANVAS":
-      return (Math.floor(col / 2) + Math.floor(row / 2)) % 2 === 0;
-    case "TWILL":
-    case "DOBBY":
-      return (col + row) % 3 !== 0;
-    case "HERRINGBONE": {
-      const band = Math.floor(col / 4) % 2 === 0;
-      return band ? (col + row) % 3 !== 0 : (col - row + 12) % 3 !== 0;
-    }
-    case "SATIN":
-      return (col * 2 + row) % 5 !== 0;
-    case "JACQUARD":
-      return (col * 2 + row) % 4 !== 0 || (col + row) % 7 === 0;
-    case "RIB":
-      return col % 2 === 0;
-    default:
-      return (col + row) % 2 === 0;
-  }
 }
 
 /** Paints one tone across every vertex of a tube. */
@@ -209,96 +186,26 @@ function buildYarn(count: number, palette: Palette, seed: number, radial: number
   return merged;
 }
 
-/* --------------------------------------------------------------- cloth --- */
-
-/**
- * Warp and weft interlacing on this fabric's lift plan. Still drawn as flowing
- * tubes rather than a rigid grid — real cloth off the loom is never flat, and
- * the gentle drape is what stops it reading as graph paper.
- */
-function buildCloth(weave: WeaveKey, palette: Palette, seed: number, radial: number, ends: number) {
-  const rand = rng(seed ^ 0x85ebca6b);
-  const tubes: THREE.BufferGeometry[] = [];
-
-  const picks = Math.round(ends * 1.25);
-  const spacing = 5.6 / ends;
-  const amp = 0.03;
-  const warpTone = palette.tones[1]!;
-  const weftTone = palette.tones[3]!;
-
-  // A soft, slow undulation across the whole cloth — the drape.
-  const drape = (x: number, z: number) =>
-    Math.sin(x * 0.42 + z * 0.3) * 0.16 + Math.cos(z * 0.55 - x * 0.18) * 0.1;
-
-  for (let i = 0; i < ends; i++) {
-    const x = (i - (ends - 1) / 2) * spacing;
-    const pts: THREE.Vector3[] = [];
-    for (let j = 0; j <= picks; j++) {
-      const z = (j - picks / 2) * spacing;
-      const over = warpOnTop(weave, i, j) ? amp : -amp;
-      pts.push(new THREE.Vector3(x, drape(x, z) + over, z));
-    }
-    const curve = new THREE.CatmullRomCurve3(pts, false, "catmullrom", 0.4);
-    tubes.push(tint(new THREE.TubeGeometry(curve, picks * 2, 0.019, radial, false), warpTone));
-  }
-
-  for (let j = 0; j < picks; j++) {
-    const z = (j - picks / 2) * spacing;
-    const pts: THREE.Vector3[] = [];
-    for (let i = 0; i <= ends; i++) {
-      const x = (i - (ends - 1) / 2) * spacing;
-      const over = warpOnTop(weave, Math.min(i, ends - 1), j) ? -amp : amp;
-      pts.push(new THREE.Vector3(x, drape(x, z) + over, z));
-    }
-    const curve = new THREE.CatmullRomCurve3(pts, false, "catmullrom", 0.4);
-    tubes.push(tint(new THREE.TubeGeometry(curve, ends * 2, 0.018, radial, false), weftTone));
-  }
-
-  // A few loose fibres lifting off the surface — cloth has hair.
-  for (let h = 0; h < 8; h++) {
-    const pts: THREE.Vector3[] = [];
-    const sx = (rand() - 0.5) * 5;
-    const sz = (rand() - 0.5) * 5;
-    for (let s = 0; s <= 12; s++) {
-      const t = s / 12;
-      pts.push(
-        new THREE.Vector3(
-          sx + t * (rand() * 0.5 + 0.3),
-          drape(sx, sz) + Math.sin(t * 3) * 0.06 + t * 0.1,
-          sz + Math.sin(t * 5) * 0.05,
-        ),
-      );
-    }
-    const curve = new THREE.CatmullRomCurve3(pts, false, "catmullrom", 0.5);
-    tubes.push(tint(new THREE.TubeGeometry(curve, 20, 0.006, 4, false), palette.tones[4]!));
-  }
-
-  const merged = mergeGeometries(tubes, false)!;
-  for (const t of tubes) t.dispose();
-  return merged;
-}
-
 /* ---------------------------------------------------------------- rig --- */
 
 function Field({
-  weave,
   hex,
   gsm,
   seedText,
   progress,
   quality,
 }: {
-  weave: WeaveKey;
   hex: string;
   gsm: number;
   seedText: string;
   progress: React.RefObject<number>;
   quality: "high" | "low";
 }) {
+  // Owned here, not passed in: this is the component that drives it each frame.
+  const dof = useRef<DepthOfFieldEffect | null>(null);
   const radial = quality === "high" ? 8 : 5;
-  const filaments = quality === "high" ? 46 : 26;
-  // Heavier cloth is coarser and shows fewer, thicker ends at this scale.
-  const ends = Math.max(10, Math.min(22, Math.round(26 - gsm / 32)));
+  // Heavier cloth is spun coarser, so it shows fewer, thicker filaments here.
+  const filaments = Math.round((quality === "high" ? 46 : 26) * (gsm > 300 ? 0.8 : 1));
 
   const palette = useMemo(() => paletteFrom(hex), [hex]);
   const seed = useMemo(() => hashString(seedText), [seedText]);
@@ -307,54 +214,66 @@ function Field({
     () => ({
       fibre: buildFibre(filaments, palette, seed, radial),
       yarn: buildYarn(filaments, palette, seed, radial, quality === "high" ? 7 : 5),
-      cloth: buildCloth(weave, palette, seed, radial, ends),
     }),
-    [filaments, palette, seed, radial, quality, weave, ends],
+    [filaments, palette, seed, radial, quality],
   );
 
   // Materials live behind refs, not a memo: their opacity is driven every frame
   // from scroll, and a memoised value is not ours to mutate.
   const fibreMat = useRef<THREE.MeshStandardMaterial>(null);
   const yarnMat = useRef<THREE.MeshStandardMaterial>(null);
-  const clothMat = useRef<THREE.MeshStandardMaterial>(null);
 
   const needleRef = useRef<THREE.Group>(null);
   const fibreRef = useRef<THREE.Group>(null);
   const yarnRef = useRef<THREE.Group>(null);
-  const clothRef = useRef<THREE.Group>(null);
+
+  // Scroll events arrive in coarse, irregular bursts. Everything on screen
+  // follows this damped value instead of the raw one, which is the difference
+  // between the camera stepping and the camera gliding.
+  const eased = useRef(0);
+
   const { camera, gl } = useThree();
 
   // Painted, not fetched — see env-map.ts. Metal needs something to reflect.
   const envMap = useMemo(() => makeStudioEnv(gl), [gl]);
 
-  useFrame((state) => {
-    const p = THREE.MathUtils.clamp(progress.current ?? 0, 0, 1);
+  useFrame((state, delta) => {
+    const raw = THREE.MathUtils.clamp(progress.current ?? 0, 0, 1);
     const t = state.clock.elapsedTime;
 
-    // Four overlapping windows. Each state is fully present at its centre and
-    // dissolves into the next — a focus pull, not a hard cut.
+    // Critically damped follow, frame-rate independent. 1 - e^(-k·dt) reaches
+    // the target at the same speed whether the tab is running at 60 or 144.
+    eased.current += (raw - eased.current) * (1 - Math.exp(-9 * Math.min(delta, 0.05)));
+    const p = eased.current;
+
     const band = (centre: number, width: number) =>
       THREE.MathUtils.clamp(1 - Math.abs(p - centre) / width, 0, 1);
     const soft = (v: number) => v * v * (3 - 2 * v);
 
-    const wNeedle = soft(band(0.0, 0.26));
-    const oFibre = soft(band(0.34, 0.26));
-    const oYarn = soft(band(0.62, 0.24));
-    const oCloth = soft(band(0.97, 0.3));
+    const wNeedle = soft(band(0.0, 0.34));
+    const oFibre = soft(band(0.42, 0.3));
+    const oYarn = soft(band(0.58, 0.26));
 
     if (fibreMat.current) fibreMat.current.opacity = oFibre;
     if (yarnMat.current) yarnMat.current.opacity = oYarn;
-    if (clothMat.current) clothMat.current.opacity = oCloth;
 
-    // Opening beat: the needle sits in frame, threaded, then withdraws as the
-    // cord unravels into loose fibre.
+    // Depth of field is strong on the needle, where it does the work of making
+    // the shot read as macro photography, and resolves to nothing by the time
+    // the filaments are the subject — you asked to see the strands sharp, and
+    // a permanent blur would just be a smeared render.
+    if (dof.current) {
+      const focus = THREE.MathUtils.clamp((p - 0.16) / 0.42, 0, 1);
+      dof.current.bokehScale = THREE.MathUtils.lerp(3.4, 0, soft(focus));
+      const cocUniforms = dof.current.circleOfConfusionMaterial.uniforms;
+      cocUniforms.focusRange.value = THREE.MathUtils.lerp(0.012, 0.16, soft(focus));
+    }
+
     if (needleRef.current) {
       needleRef.current.visible = wNeedle > 0.01;
-      needleRef.current.scale.setScalar(1);
-      const withdraw = THREE.MathUtils.clamp((p - 0.1) / 0.2, 0, 1);
-      needleRef.current.position.y = 0.15 + withdraw * 2.6;
-      needleRef.current.position.z = -withdraw * 1.4;
-      needleRef.current.rotation.z = 0.12 + Math.sin(t * 0.22) * 0.035 + withdraw * 0.3;
+      const withdraw = THREE.MathUtils.clamp((p - 0.14) / 0.22, 0, 1);
+      needleRef.current.position.y = 0.15 + withdraw * 2.8;
+      needleRef.current.position.z = -withdraw * 1.5;
+      needleRef.current.rotation.z = 0.12 + Math.sin(t * 0.22) * 0.03 + withdraw * 0.3;
       for (const child of needleRef.current.children) {
         const mesh = child as THREE.Mesh;
         const mat = mesh.material as THREE.Material | undefined;
@@ -365,30 +284,25 @@ function Field({
       }
     }
 
-    // The outgoing state drifts back and the incoming comes forward, which
-    // reads as depth rather than as a dissolve.
     if (fibreRef.current) {
       fibreRef.current.visible = oFibre > 0.01;
-      fibreRef.current.position.z = 1.2 - p * 2.6;
-      fibreRef.current.rotation.z = Math.sin(t * 0.09) * 0.04;
+      fibreRef.current.position.z = 1.4 - p * 2.4;
+      fibreRef.current.rotation.z = Math.sin(t * 0.09) * 0.035;
       fibreRef.current.position.x = Math.sin(t * 0.07) * 0.12;
     }
+
     if (yarnRef.current) {
       yarnRef.current.visible = oYarn > 0.01;
-      yarnRef.current.position.z = 2.1 - p * 2.6;
-      yarnRef.current.rotation.x = 0.06 + Math.sin(t * 0.11) * 0.03;
-      yarnRef.current.rotation.z = Math.sin(t * 0.08 + 1) * 0.03;
-    }
-    if (clothRef.current) {
-      clothRef.current.visible = oCloth > 0.01;
-      clothRef.current.position.z = 2.6 - p * 2.4;
-      clothRef.current.rotation.x = THREE.MathUtils.lerp(0.95, 0.4, THREE.MathUtils.clamp((p - 0.72) / 0.28, 0, 1));
-      clothRef.current.rotation.y = Math.sin(t * 0.07) * 0.06;
+      yarnRef.current.position.z = 2.2 - p * 2.2;
+      yarnRef.current.rotation.x = 0.06 + Math.sin(t * 0.11) * 0.025;
+      yarnRef.current.rotation.z = Math.sin(t * 0.08 + 1) * 0.025;
     }
 
-    // Slow dolly in, so the whole sequence feels like one continuous approach.
-    const target = new THREE.Vector3(Math.sin(t * 0.05) * 0.2, 0.18 + p * 0.45, 4.9 - p * 1.7);
-    camera.position.lerp(target, 0.04);
+    // Camera follows the already-damped value, so this can track tightly
+    // without inheriting the jitter of raw scroll.
+    const k = 1 - Math.exp(-6 * Math.min(delta, 0.05));
+    const target = new THREE.Vector3(Math.sin(t * 0.05) * 0.18, 0.16 + p * 0.4, 4.9 - p * 1.8);
+    camera.position.lerp(target, k);
     camera.lookAt(0, 0, 0);
   });
 
@@ -404,29 +318,43 @@ function Field({
           <meshStandardMaterial ref={fibreMat} vertexColors transparent opacity={0} roughness={0.52} metalness={0.04} />
         </mesh>
       </group>
+
       <group ref={yarnRef}>
         <mesh geometry={geos.yarn}>
           <meshStandardMaterial ref={yarnMat} vertexColors transparent opacity={0} roughness={0.5} metalness={0.04} />
         </mesh>
       </group>
-      <group ref={clothRef} rotation={[0.95, 0, 0]}>
-        <mesh geometry={geos.cloth}>
-          <meshStandardMaterial ref={clothMat} vertexColors transparent opacity={0} roughness={0.58} metalness={0.03} />
-        </mesh>
-      </group>
+
+      {/* Shallow focus on the needle, resolving to fully sharp by the time the
+          filaments are the subject — ramped per frame above. Rendered at 720p
+          rather than 480p: the blur pass was the source of the blocky
+          highlight, because a specular smaller than one low-res texel has
+          nowhere to resolve. Skipped entirely on low-power devices, where it
+          is by far the most expensive pass. */}
+      {quality === "high" ? (
+        <EffectComposer enableNormalPass={false} multisampling={4}>
+          <DepthOfField
+            ref={dof}
+            focusDistance={0.019}
+            focalLength={0.09}
+            bokehScale={3.4}
+            height={720}
+          />
+          <Vignette eskil={false} offset={0.26} darkness={0.66} />
+        </EffectComposer>
+      ) : null}
     </>
   );
 }
 
 export default function LoomScene({
-  weave,
   hex,
   gsm = 160,
   seed = "threadwyn",
   progress,
   quality = "high",
 }: {
-  weave: WeaveKey;
+  weave?: WeaveKey;
   hex: string;
   gsm?: number;
   seed?: string;
@@ -437,8 +365,10 @@ export default function LoomScene({
 
   return (
     <Canvas
-      gl={{ antialias: quality === "high", alpha: true }}
-      dpr={quality === "high" ? [1, 1.8] : [1, 1.25]}
+      gl={{ antialias: quality === "high", alpha: true, powerPreference: "high-performance" }}
+      // Capping DPR is the cheapest frame-rate win available on a 4K display:
+      // the fragment cost of this scene scales with pixels, not with geometry.
+      dpr={quality === "high" ? [1, 1.6] : [1, 1.15]}
       camera={{ position: [0, 0.2, 4.8], fov: 40, near: 0.1, far: 40 }}
       frameloop="always"
     >
@@ -450,21 +380,11 @@ export default function LoomScene({
       <directionalLight position={[-3.4, -1.2, 1.6]} intensity={0.85} color="#9FBFCC" />
       <directionalLight position={[0, 1.4, -4]} intensity={1.15} color="#FFE7C4" />
 
-      <Field weave={weave} hex={hex} gsm={gsm} seedText={seed} progress={progress} quality={quality} />
+      <Field hex={hex} gsm={gsm} seedText={seed} progress={progress} quality={quality} />
 
       {/* Depth falloff — the far filaments sink into the dark. */}
       <fog attach="fog" args={[`#${fog.getHexString()}`, 4.4, 14]} />
 
-      {/* Shallow depth of field is the single thing that makes macro textile
-          photography read as photography. One sharp band, everything in front
-          of and behind it falling off. Skipped entirely on low-power devices —
-          it is the most expensive pass here by a wide margin. */}
-      {quality === "high" ? (
-        <EffectComposer enableNormalPass={false}>
-          <DepthOfField focusDistance={0.012} focalLength={0.045} bokehScale={5.5} height={480} />
-          <Vignette eskil={false} offset={0.24} darkness={0.72} />
-        </EffectComposer>
-      ) : null}
     </Canvas>
   );
 }

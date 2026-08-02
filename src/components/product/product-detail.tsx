@@ -20,7 +20,6 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/components/ui/toast";
 import { FabricSwatch, ColorwayChip } from "./fabric-swatch";
-import { LookInside } from "@/components/weavescope/look-inside";
 
 export type ProductDetailData = {
   id: string;
@@ -169,8 +168,7 @@ export function ProductDetail({ product }: { product: ProductDetailData }) {
         </div>
 
         {/* Weave explainer — the "why" behind the structure, not just its name. */}
-        <div className="mt-4 rounded-[var(--radius-md)] border border-line bg-surface p-4">
-          <div className="flex items-start gap-3">
+        <div className="mt-4 flex items-start gap-3 rounded-[var(--radius-md)] border border-line bg-surface p-4">
             <span className="mt-0.5 size-10 shrink-0 overflow-hidden rounded-[var(--radius-xs)]">
               <FabricSwatch
                 weave={product.weave}
@@ -181,18 +179,9 @@ export function ProductDetail({ product }: { product: ProductDetailData }) {
                 drape={false}
               />
             </span>
-            <div className="min-w-0">
-              <p className="text-[13px] font-medium text-ink">{WEAVE_LABELS[product.weave]}</p>
-              <p className="mt-1 text-[12.5px] leading-relaxed text-muted">{WEAVE_NOTES[product.weave]}</p>
-            </div>
-          </div>
-
-          <div className="mt-4 flex flex-wrap items-center gap-3 border-t border-line pt-4">
-            <LookInside slug={product.slug} productName={product.name} variant="inline" />
-            <p className="min-w-0 flex-1 text-[11.5px] leading-relaxed text-subtle">
-              Magnify from cloth to weave to fibre, with the construction figures worked out from this
-              fabric&apos;s own specification.
-            </p>
+          <div className="min-w-0">
+            <p className="text-[13px] font-medium text-ink">{WEAVE_LABELS[product.weave]}</p>
+            <p className="mt-1 text-[12.5px] leading-relaxed text-muted">{WEAVE_NOTES[product.weave]}</p>
           </div>
         </div>
       </div>
