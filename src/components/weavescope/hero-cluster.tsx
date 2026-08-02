@@ -43,7 +43,6 @@ export function HeroCluster({ swatches }: { swatches: HeroSwatch[] }) {
   const reduced = useReducedMotion();
   const wrapRef = useRef<HTMLDivElement>(null);
   const [active, setActive] = useState(false);
-  const [label, setLabel] = useState("Look inside");
 
   // Raw pointer position, then a spring — the lag is what makes a custom
   // cursor feel like an object rather than a sprite glued to the mouse.
@@ -80,21 +79,14 @@ export function HeroCluster({ swatches }: { swatches: HeroSwatch[] }) {
         <Link
           key={s.id}
           href={`/weavescope/${s.slug}`}
-          onPointerEnter={(e) => {
-            if (e.pointerType === "mouse") setLabel(s.name);
-          }}
-          onPointerLeave={(e) => {
-            if (e.pointerType === "mouse") setLabel("Look inside");
-          }}
-          onFocus={() => setLabel(s.name)}
           style={{ animationDelay: `${0.35 + i * 0.11}s` }}
           aria-label={`Look inside ${s.name} — watch it being woven`}
           className={cn(
-            "group/hero animate-fade-up absolute block rounded-[var(--radius-lg)] border border-line bg-surface p-1.5",
-            "shadow-[var(--shadow-lg)]",
-            "transition-[transform,box-shadow,border-color] duration-700 ease-[var(--ease-out-expo)]",
-            "hover:-translate-y-2 hover:rotate-0 hover:border-brand hover:shadow-[var(--shadow-xl)]",
-            "focus-visible:-translate-y-2 focus-visible:rotate-0 focus-visible:border-brand",
+            "animate-fade-up absolute block rounded-[var(--radius-lg)] border border-line bg-surface p-1.5",
+            "shadow-[var(--shadow-lg)] will-change-transform",
+            "transition-transform duration-700 ease-[var(--ease-out-expo)]",
+            "hover:-translate-y-1.5 hover:rotate-0",
+            "focus-visible:-translate-y-1.5 focus-visible:rotate-0",
             active && "[@media(pointer:fine)]:cursor-none",
             LAYOUT[i],
           )}
@@ -128,14 +120,9 @@ export function HeroCluster({ swatches }: { swatches: HeroSwatch[] }) {
           className="pointer-events-none absolute top-0 left-0 z-40 hidden [@media(pointer:fine)]:block"
         >
           <div className="-translate-x-1/2 -translate-y-1/2">
-            <div className="flex size-26 flex-col items-center justify-center gap-1.5 rounded-full bg-brand/92 text-white shadow-[var(--shadow-xl)] backdrop-blur-sm">
+            <div className="flex size-24 flex-col items-center justify-center gap-1.5 rounded-full bg-brand/92 text-white shadow-[var(--shadow-xl)] backdrop-blur-sm">
               <Reticle className="size-5" />
               <span className="text-[10.5px] leading-none font-medium">Look inside</span>
-              {/* Naming the fabric under the pointer keeps the shared cursor
-                  from being ambiguous about where a click will land. */}
-              <span className="max-w-[5.5rem] truncate px-2 text-center text-[9px] leading-tight text-white/65">
-                {label === "Look inside" ? " " : label}
-              </span>
             </div>
           </div>
         </motion.div>

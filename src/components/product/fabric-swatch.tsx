@@ -14,6 +14,7 @@ export function FabricSwatch({
   className,
   alt,
   drape = true,
+  magnify = 1,
   priority: _priority,
 }: {
   weave: WeaveKey;
@@ -24,9 +25,16 @@ export function FabricSwatch({
   alt: string;
   /** Adds the soft light banding that reads as folded cloth. */
   drape?: boolean;
+  /**
+   * Enlarges the weave tile without changing the structure — the same cloth,
+   * closer. Used where the point is to read the interlacing rather than to
+   * judge the colour.
+   */
+  magnify?: number;
   priority?: boolean;
 }) {
-  const spec = buildWeaveSpec({ weave, hex, gsm, seed });
+  const base = buildWeaveSpec({ weave, hex, gsm, seed });
+  const spec = magnify === 1 ? base : { ...base, tile: base.tile * magnify };
   const uid = `w${spec.seed.toString(36)}`;
   const tile = weaveTile(weave, spec);
 
