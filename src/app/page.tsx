@@ -85,15 +85,38 @@ export default async function LandingPage() {
   const [productCount, millCount, stockAgg, leadAgg] = stats;
   const products = serialize(featured) as unknown as ProductCardData[];
 
-  // A tight, high-contrast set for the hero cascade — different weaves and
-  // colour temperatures so the renderer's range is obvious at a glance.
-  const heroSwatches = [
-    { weave: "TWILL" as WeaveKey, hex: "#2A3A5C", gsm: 407, label: "12oz Stretch Denim", meta: "407 gsm · 152 cm" },
-    { weave: "PLAIN" as WeaveKey, hex: "#DDD3C0", gsm: 165, label: "European Flax 165", meta: "100% Linen" },
-    { weave: "SATIN" as WeaveKey, hex: "#6B2233", gsm: 71, label: "Mulberry Charmeuse", meta: "16mm silk" },
-    { weave: "HERRINGBONE" as WeaveKey, hex: "#3A3A3C", gsm: 280, label: "Wool Herringbone", meta: "280 gsm" },
-    { weave: "JERSEY" as WeaveKey, hex: "#175D45", gsm: 180, label: "Combed Jersey", meta: "180 gsm knit" },
+  // The hero cascade is drawn from real catalogue rows, not decoration — each
+  // card opens that fabric's loom. Picked for weave and colour-temperature
+  // spread so the renderer's range reads at a glance.
+  const heroPicks = [
+    "12oz-stretch-denim-ahmedabad-denim",
+    "pure-european-flax-165-erode-linen",
+    "mulberry-charmeuse-16mm-surat-silk-house",
+    "wool-herringbone-280-bhiwandi-loomworks",
+    "combed-single-jersey-180-ludhiana-knit-mills",
   ];
+
+  const heroRows = await db.product.findMany({
+    where: { slug: { in: heroPicks } },
+    select: {
+      id: true,
+      slug: true,
+      name: true,
+      weave: true,
+      gsm: true,
+      composition: true,
+      colorways: { select: { hex: true }, orderBy: { position: "asc" }, take: 1 },
+    },
+  });
+
+  // Preserve the curated order, and fall back to featured stock if a seed slug
+  // ever drifts — the hero must never render half-empty.
+  const bySlug = new Map(heroRows.map((r) => [r.slug, r]));
+  const heroSwatches = heroPicks
+    .map((s) => bySlug.get(s))
+    .filter((r): r is NonNullable<typeof r> => Boolean(r))
+    .concat(heroRows.filter((r) => !heroPicks.includes(r.slug)))
+    .slice(0, 5);
 
   return (
     <>
@@ -151,6 +174,8 @@ export default async function LandingPage() {
 
             {/* Z-axis cascade of real rendered swatches. Rotations and overlaps
                 are stripped below lg so nothing collides on a phone. */}
+            {/* Each card is a door into that fabric's loom. Rotations and
+                overlaps are stripped below lg so nothing collides on a phone. */}
             <Reveal delay={0.3} y={28} className="relative hidden lg:block">
               <div className="relative mx-auto h-[34rem] w-full max-w-lg">
                 {heroSwatches.map((s, i) => {
@@ -162,26 +187,54 @@ export default async function LandingPage() {
                     "right-6 bottom-0 w-48 rotate-[-4deg] z-20",
                   ][i]!;
                   return (
-                    <figure
-                      key={s.label}
+                    <Link
+                      key={s.id}
+                      href={`/weavescope/${s.slug}`}
                       style={{ animationDelay: `${0.35 + i * 0.11}s` }}
-                      className={`animate-fade-up absolute ${layout} rounded-[var(--radius-lg)] border border-line bg-surface p-1.5 shadow-[var(--shadow-lg)] transition-transform duration-700 ease-[var(--ease-out-expo)] hover:-translate-y-1.5 hover:rotate-0`}
+                      aria-label={`Look inside ${s.name} — watch it being woven`}
+                      className={`group/hero animate-fade-up absolute ${layout} block rounded-[var(--radius-lg)] border border-line bg-surface p-1.5 shadow-[var(--shadow-lg)] transition-[transform,box-shadow,border-color] duration-700 ease-[var(--ease-out-expo)] hover:-translate-y-2 hover:rotate-0 hover:border-brand hover:shadow-[var(--shadow-xl)] focus-visible:-translate-y-2 focus-visible:rotate-0`}
                     >
-                      <div className="aspect-square overflow-hidden rounded-[calc(var(--radius-lg)-8px)]">
+                      <div className="relative aspect-square overflow-hidden rounded-[calc(var(--radius-lg)-8px)]">
                         <FabricSwatch
-                          weave={s.weave}
-                          hex={s.hex}
+                          weave={s.weave as WeaveKey}
+                          hex={s.colorways[0]?.hex ?? "#C9C2B4"}
                           gsm={s.gsm}
-                          seed={s.label}
-                          alt={`${s.label} swatch`}
+                          seed={s.id}
+                          alt={`${s.name} swatch`}
                           priority
                         />
+
+                        {/* The reticle resolves on hover — a loupe mark, not a
+                            generic info glyph. */}
+                        <span className="absolute inset-0 grid place-items-center bg-[#14120f]/0 transition-colors duration-500 group-hover/hero:bg-[#14120f]/45 group-focus-visible/hero:bg-[#14120f]/45">
+                          <span className="flex scale-90 items-center gap-2 rounded-full border border-white/30 bg-[#14120f]/70 px-3.5 py-2 opacity-0 backdrop-blur-md transition-[opacity,transform] duration-500 ease-[var(--ease-spring)] group-hover/hero:scale-100 group-hover/hero:opacity-100 group-focus-visible/hero:scale-100 group-focus-visible/hero:opacity-100">
+                            <span className="relative grid size-4 place-items-center text-white">
+                              <span className="absolute inset-0 rounded-full border border-current opacity-50 motion-safe:animate-ping motion-safe:[animation-duration:2s]" />
+                              <svg viewBox="0 0 16 16" fill="none" className="relative size-full">
+                                <circle cx="8" cy="8" r="6.25" stroke="currentColor" strokeWidth="1.1" />
+                                <circle cx="8" cy="8" r="2.25" stroke="currentColor" strokeWidth="1.1" strokeOpacity="0.7" />
+                                <g stroke="currentColor" strokeWidth="1.1" strokeLinecap="round">
+                                  <line x1="8" y1="0.75" x2="8" y2="2.6" />
+                                  <line x1="8" y1="13.4" x2="8" y2="15.25" />
+                                  <line x1="0.75" y1="8" x2="2.6" y2="8" />
+                                  <line x1="13.4" y1="8" x2="15.25" y2="8" />
+                                </g>
+                              </svg>
+                            </span>
+                            <span className="text-[11.5px] font-medium whitespace-nowrap text-white">
+                              Look inside
+                            </span>
+                          </span>
+                        </span>
                       </div>
-                      <figcaption className="px-2 pt-2.5 pb-1.5">
-                        <p className="truncate text-[12px] font-medium text-ink">{s.label}</p>
-                        <p className="mt-0.5 truncate font-mono text-[10px] text-subtle">{s.meta}</p>
-                      </figcaption>
-                    </figure>
+
+                      <div className="px-2 pt-2.5 pb-1.5">
+                        <p className="truncate text-[12px] font-medium text-ink">{s.name}</p>
+                        <p className="mt-0.5 truncate font-mono text-[10px] text-subtle">
+                          {s.gsm} gsm · {s.composition}
+                        </p>
+                      </div>
+                    </Link>
                   );
                 })}
               </div>

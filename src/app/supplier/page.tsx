@@ -11,7 +11,8 @@ import {
 } from "@phosphor-icons/react/dist/ssr";
 
 import { requireSupplierPage } from "@/lib/auth/guards";
-import { getSupplierMetrics, STATUS_LABELS, STATUS_TONES } from "@/server/services/order-service";
+import { getSupplierMetrics } from "@/server/services/order-service";
+import { STATUS_LABELS, STATUS_TONES } from "@/lib/order-status";
 import { serialize } from "@/lib/serialize";
 import { formatDate, formatMetres, formatMoney, formatNumber, pluralise } from "@/lib/utils";
 import { Badge, StatusDot } from "@/components/ui/badge";

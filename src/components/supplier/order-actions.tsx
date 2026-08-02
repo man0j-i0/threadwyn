@@ -5,7 +5,7 @@ import { useState } from "react";
 import type { OrderStatus } from "@prisma/client";
 import { ArrowRight, Check, Prohibit } from "@phosphor-icons/react";
 
-import { STATUS_FLOW, STATUS_LABELS } from "@/server/services/order-service";
+import { STATUS_FLOW, STATUS_LABELS } from "@/lib/order-status";
 import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
 import { Field, Textarea, Input } from "@/components/ui/field";

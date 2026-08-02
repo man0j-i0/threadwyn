@@ -4,7 +4,8 @@ import { notFound } from "next/navigation";
 import { ArrowLeft, MapPin, Note, User } from "@phosphor-icons/react/dist/ssr";
 
 import { requireSupplierPage, HttpError } from "@/lib/auth/guards";
-import { getSupplierOrder, STATUS_LABELS, STATUS_TONES } from "@/server/services/order-service";
+import { getSupplierOrder } from "@/server/services/order-service";
+import { STATUS_LABELS, STATUS_TONES } from "@/lib/order-status";
 import { serialize } from "@/lib/serialize";
 import { formatDate, formatMetres, formatMoney, pluralise } from "@/lib/utils";
 import { Badge, StatusDot } from "@/components/ui/badge";

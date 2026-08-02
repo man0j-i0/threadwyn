@@ -3,7 +3,8 @@ import Link from "next/link";
 import { ArrowRight } from "@phosphor-icons/react/dist/ssr";
 
 import { requireBuyerPage } from "@/lib/auth/guards";
-import { getBuyerOrders, rollupStatus, STATUS_LABELS, STATUS_TONES } from "@/server/services/order-service";
+import { getBuyerOrders } from "@/server/services/order-service";
+import { rollupStatus, STATUS_LABELS, STATUS_TONES } from "@/lib/order-status";
 import { serialize } from "@/lib/serialize";
 import { formatDate, formatMetres, formatMoney, pluralise } from "@/lib/utils";
 import { Badge, StatusDot } from "@/components/ui/badge";

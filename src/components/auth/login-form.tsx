@@ -74,7 +74,7 @@ export function LoginForm() {
     }
   }
 
-  function useDemo(demoEmail: string) {
+  function applyDemoAccount(demoEmail: string) {
     setEmail(demoEmail);
     setPassword("threadwyn");
     setErrors({});
@@ -91,7 +91,7 @@ export function LoginForm() {
               <button
                 key={d.email}
                 type="button"
-                onClick={() => useDemo(d.email)}
+                onClick={() => applyDemoAccount(d.email)}
                 className="inline-flex min-h-9 cursor-pointer items-center gap-2 rounded-full border border-line bg-surface px-3 text-[12px] text-muted transition-colors hover:border-brand-line hover:bg-brand-soft hover:text-brand-ink"
               >
                 {d.icon}

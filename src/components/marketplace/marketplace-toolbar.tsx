@@ -27,7 +27,15 @@ export function MarketplaceToolbar({
   const currentQuery = searchParams.get("q") ?? "";
   const [query, setQuery] = useState(currentQuery);
 
-  useEffect(() => setQuery(currentQuery), [currentQuery]);
+  // The input is uncontrolled-ish: the user owns it while typing, but a URL
+  // change (back button, a chip removed, the assistant applying filters) has to
+  // win. Adjusting during render is React's sanctioned pattern for this — an
+  // effect would render the stale value once first.
+  const [syncedQuery, setSyncedQuery] = useState(currentQuery);
+  if (syncedQuery !== currentQuery) {
+    setSyncedQuery(currentQuery);
+    setQuery(currentQuery);
+  }
 
   // "/" focuses search from anywhere on the page, the way every catalogue
   // power-user already expects.

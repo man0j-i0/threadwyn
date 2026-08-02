@@ -57,28 +57,37 @@ const SCRIPT: readonly ScriptStep[] = [
   },
 ];
 
-export function BuyerOnboarding({ defaultName }: { defaultName: string }) {
+export function BuyerOnboarding({
+  defaultName,
+  initial,
+  mode = "onboarding",
+}: {
+  defaultName: string;
+  initial?: Partial<BuyerProfileInput>;
+  /** "settings" skips the conversation and opens straight on the editable form. */
+  mode?: "onboarding" | "settings";
+}) {
   const router = useRouter();
   const { toast } = useToast();
 
-  const [stage, setStage] = useState<"chat" | "review">("chat");
+  const [stage, setStage] = useState<"chat" | "review">(mode === "settings" ? "review" : "chat");
   const [source, setSource] = useState<{ mode: "model" | "rules"; model: string } | null>(null);
   const [busy, setBusy] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [formError, setFormError] = useState<string | null>(null);
 
   const [form, setForm] = useState<BuyerProfileInput>({
-    businessName: "",
-    businessType: "BRAND",
-    industry: "",
-    city: "",
-    categoryInterest: [],
-    preferredFabrics: [],
-    typicalOrderQty: "500-2000",
-    budgetMin: null,
-    budgetMax: null,
-    notes: "",
-    onboardingMode: "conversation",
+    businessName: initial?.businessName ?? "",
+    businessType: initial?.businessType ?? "BRAND",
+    industry: initial?.industry ?? "",
+    city: initial?.city ?? "",
+    categoryInterest: initial?.categoryInterest ?? [],
+    preferredFabrics: initial?.preferredFabrics ?? [],
+    typicalOrderQty: initial?.typicalOrderQty ?? "500-2000",
+    budgetMin: initial?.budgetMin ?? null,
+    budgetMax: initial?.budgetMax ?? null,
+    notes: initial?.notes ?? "",
+    onboardingMode: initial?.onboardingMode ?? (mode === "settings" ? "form" : "conversation"),
   });
 
   // Which fields the extraction actually filled — used to mark them in the UI
@@ -161,10 +170,10 @@ export function BuyerOnboarding({ defaultName }: { defaultName: string }) {
 
       toast({
         tone: "success",
-        title: "You're set up",
+        title: mode === "settings" ? "Profile saved" : "You're set up",
         description: "Recommendations are now tuned to what you told us.",
       });
-      router.push("/marketplace");
+      router.push(mode === "settings" ? "/dashboard" : "/marketplace");
       router.refresh();
     } catch (err) {
       setFormError(err instanceof Error ? err.message : "Could not save.");
@@ -364,23 +373,29 @@ export function BuyerOnboarding({ defaultName }: { defaultName: string }) {
       </div>
 
       <div className="mt-7 flex flex-wrap items-center justify-between gap-3">
-        <button
-          type="button"
-          onClick={() => setStage("chat")}
-          className="inline-flex cursor-pointer items-center gap-1.5 text-[13px] text-subtle transition-colors hover:text-ink"
-        >
-          <ArrowLeft size={12} weight="bold" />
-          Back to the conversation
-        </button>
+        {mode === "onboarding" ? (
+          <button
+            type="button"
+            onClick={() => setStage("chat")}
+            className="inline-flex cursor-pointer items-center gap-1.5 text-[13px] text-subtle transition-colors hover:text-ink"
+          >
+            <ArrowLeft size={12} weight="bold" />
+            Back to the conversation
+          </button>
+        ) : (
+          <span />
+        )}
         <Button type="submit" size="lg" loading={busy} icon={busy ? undefined : <Check size={15} weight="bold" />}>
-          Save and start sourcing
+          {mode === "settings" ? "Save changes" : "Save and start sourcing"}
         </Button>
       </div>
 
-      <p className="mt-4 flex items-center justify-center gap-1.5 text-center text-[11.5px] text-subtle">
-        <Sparkle size={11} weight="fill" className="text-accent" />
-        Nothing was saved until you pressed save. You can change any of this later.
-      </p>
+      {mode === "onboarding" ? (
+        <p className="mt-4 flex items-center justify-center gap-1.5 text-center text-[11.5px] text-subtle">
+          <Sparkle size={11} weight="fill" className="text-accent" />
+          Nothing was saved until you pressed save. You can change any of this later.
+        </p>
+      ) : null}
     </form>
   );
 }

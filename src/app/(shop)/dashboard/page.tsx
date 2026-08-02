@@ -4,10 +4,11 @@ import { ArrowRight, Handbag, Package, PencilSimple, Sparkle, TrendUp } from "@p
 
 import { requireBuyerPage } from "@/lib/auth/guards";
 import { db } from "@/lib/db";
-import { getBuyerOrders, rollupStatus, STATUS_LABELS, STATUS_TONES } from "@/server/services/order-service";
+import { getBuyerOrders } from "@/server/services/order-service";
+import { rollupStatus, STATUS_LABELS, STATUS_TONES } from "@/lib/order-status";
 import { searchProducts } from "@/server/services/product-service";
 import { serialize } from "@/lib/serialize";
-import { formatDate, formatMoney, formatNumber, pluralise, titleCase } from "@/lib/utils";
+import { formatDate, formatMoney, formatNumber, titleCase } from "@/lib/utils";
 import { ProductCard, type ProductCardData } from "@/components/product/product-card";
 import { Badge, StatusDot } from "@/components/ui/badge";
 import { ButtonLink } from "@/components/ui/button";

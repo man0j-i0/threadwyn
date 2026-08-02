@@ -2,7 +2,7 @@ import { Check, Prohibit } from "@phosphor-icons/react/dist/ssr";
 import type { OrderStatus } from "@prisma/client";
 
 import { cn, formatDateTime } from "@/lib/utils";
-import { STATUS_LABELS, STATUS_LADDER } from "@/server/services/order-service";
+import { STATUS_LABELS, STATUS_LADDER } from "@/lib/order-status";
 
 type Event = { id: string; status: OrderStatus; note: string | null; actor: string; createdAt: string };
 

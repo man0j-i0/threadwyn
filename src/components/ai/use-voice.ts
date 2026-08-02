@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 
 /**
  * Voice input via the Web Speech API.
@@ -42,6 +42,14 @@ function getRecognitionCtor(): (new () => SpeechRecognitionLike) | null {
   return w.SpeechRecognition ?? w.webkitSpeechRecognition ?? null;
 }
 
+/**
+ * Feature detection has to happen on the client, but reading it during render
+ * would desync hydration. `useSyncExternalStore` is the sanctioned way to say
+ * "false on the server, the real answer on the client" without a
+ * setState-in-effect cascade.
+ */
+const noopSubscribe = () => () => {};
+
 export function useVoice({
   onFinal,
   lang = "en-IN",
@@ -49,21 +57,26 @@ export function useVoice({
   onFinal: (transcript: string) => void;
   lang?: string;
 }) {
-  const [supported, setSupported] = useState(false);
+  const supported = useSyncExternalStore(
+    noopSubscribe,
+    () => getRecognitionCtor() !== null,
+    () => false,
+  );
+
   const [listening, setListening] = useState(false);
   const [interim, setInterim] = useState("");
   const [error, setError] = useState<string | null>(null);
 
   const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
   const finalRef = useRef("");
-  // Kept in a ref so the recognition callbacks always see the current handler
-  // without having to tear down and rebuild the recogniser on every render.
-  const onFinalRef = useRef(onFinal);
-  onFinalRef.current = onFinal;
 
+  // Kept in a ref so the recognition callbacks always see the current handler
+  // without tearing down and rebuilding the recogniser on every render.
+  // Assigned in an effect, not during render — a render must stay pure.
+  const onFinalRef = useRef(onFinal);
   useEffect(() => {
-    setSupported(getRecognitionCtor() !== null);
-  }, []);
+    onFinalRef.current = onFinal;
+  }, [onFinal]);
 
   const stop = useCallback(() => {
     recognitionRef.current?.stop();
@@ -142,10 +155,15 @@ export function useVoice({
  *  office suddenly talking — and always interruptible. */
 export function useSpeech() {
   const [speaking, setSpeaking] = useState(false);
-  const [supported, setSupported] = useState(false);
 
+  const supported = useSyncExternalStore(
+    noopSubscribe,
+    () => "speechSynthesis" in window,
+    () => false,
+  );
+
+  // Never leave a page still talking.
   useEffect(() => {
-    setSupported(typeof window !== "undefined" && "speechSynthesis" in window);
     return () => {
       if (typeof window !== "undefined" && "speechSynthesis" in window) window.speechSynthesis.cancel();
     };

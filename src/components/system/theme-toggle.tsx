@@ -10,8 +10,14 @@ type Theme = "light" | "dark";
 export function ThemeToggle({ className }: { className?: string }) {
   const [theme, setTheme] = useState<Theme | null>(null);
 
+  // The theme class is stamped on <html> by ThemeScript before first paint, so
+  // the truth lives in the DOM. Read it on the next frame rather than
+  // synchronously in the effect body, which would cascade a second render.
   useEffect(() => {
-    setTheme(document.documentElement.classList.contains("dark") ? "dark" : "light");
+    const raf = requestAnimationFrame(() => {
+      setTheme(document.documentElement.classList.contains("dark") ? "dark" : "light");
+    });
+    return () => cancelAnimationFrame(raf);
   }, []);
 
   function toggle() {

@@ -38,18 +38,27 @@ export function HeaderClient({
   const [catsOpen, setCatsOpen] = useState(false);
 
   // Passive listener + a boolean threshold: this fires at most twice per
-  // scroll gesture rather than on every frame.
+  // scroll gesture rather than on every frame. The initial read is deferred to
+  // the next frame so it does not cascade a render from the effect body.
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 12);
-    onScroll();
+    const raf = requestAnimationFrame(onScroll);
     window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
+    return () => {
+      cancelAnimationFrame(raf);
+      window.removeEventListener("scroll", onScroll);
+    };
   }, []);
 
-  useEffect(() => {
+  // Navigating anywhere closes whatever was open. Adjusting during render is
+  // React's pattern for resetting state on a changed input — an effect would
+  // paint one frame with the menu still covering the new page.
+  const [lastPath, setLastPath] = useState(pathname);
+  if (lastPath !== pathname) {
+    setLastPath(pathname);
     setMenuOpen(false);
     setCatsOpen(false);
-  }, [pathname]);
+  }
 
   useEffect(() => {
     document.body.style.overflow = menuOpen ? "hidden" : "";

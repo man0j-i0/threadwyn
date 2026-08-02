@@ -4,51 +4,24 @@ import { OrderStatus, Prisma } from "@prisma/client";
 
 import { db } from "@/lib/db";
 import { HttpError, notFound } from "@/lib/auth/guards";
+import { STATUS_FLOW, STATUS_LABELS, defaultStatusNote } from "@/lib/order-status";
 import { money } from "@/lib/serialize";
 import type { CheckoutInput } from "@/lib/validation/schemas";
 import { getCart } from "./cart-service";
 
 /**
- * Status transitions are an explicit adjacency map, not a free-form string
- * update. A supplier cannot skip PREPARING, cannot walk an order backwards,
- * and cannot cancel something already dispatched. Encoding it here — rather
- * than only disabling buttons in the UI — means the rule holds against a
- * hand-rolled API call too.
+ * Status vocabulary and the transition map live in `lib/order-status.ts` so the
+ * supplier's client-side control can read the same rules without importing this
+ * module (and with it `server-only`, Prisma and the data layer) into the
+ * browser bundle. Re-exported here so server callers have one import.
  */
-export const STATUS_FLOW: Record<OrderStatus, OrderStatus[]> = {
-  PENDING: ["ACCEPTED", "CANCELLED"],
-  ACCEPTED: ["PREPARING", "CANCELLED"],
-  PREPARING: ["READY_FOR_DISPATCH", "CANCELLED"],
-  READY_FOR_DISPATCH: ["COMPLETED"],
-  COMPLETED: [],
-  CANCELLED: [],
-};
-
-export const STATUS_LADDER: OrderStatus[] = [
-  "PENDING",
-  "ACCEPTED",
-  "PREPARING",
-  "READY_FOR_DISPATCH",
-  "COMPLETED",
-];
-
-export const STATUS_LABELS: Record<OrderStatus, string> = {
-  PENDING: "Pending",
-  ACCEPTED: "Accepted",
-  PREPARING: "Preparing",
-  READY_FOR_DISPATCH: "Ready for dispatch",
-  COMPLETED: "Completed",
-  CANCELLED: "Cancelled",
-};
-
-export const STATUS_TONES: Record<OrderStatus, "neutral" | "info" | "warn" | "brand" | "positive" | "danger"> = {
-  PENDING: "warn",
-  ACCEPTED: "info",
-  PREPARING: "brand",
-  READY_FOR_DISPATCH: "brand",
-  COMPLETED: "positive",
-  CANCELLED: "danger",
-};
+export {
+  STATUS_FLOW,
+  STATUS_LADDER,
+  STATUS_LABELS,
+  STATUS_TONES,
+  rollupStatus,
+} from "@/lib/order-status";
 
 function orderNumberFrom(seq: number) {
   return `TW-${seq.toString(36).toUpperCase().padStart(5, "0")}`;
@@ -231,21 +204,6 @@ export async function getBuyerOrder(buyerId: string, orderNumber: string) {
   return order;
 }
 
-/**
- * A parent order has several sub-orders at different stages. The buyer-facing
- * status is the *least advanced* one — "your order is complete" would be a lie
- * while one mill is still cutting.
- */
-export function rollupStatus(statuses: OrderStatus[]): OrderStatus {
-  const live = statuses.filter((s) => s !== "CANCELLED");
-  if (live.length === 0) return "CANCELLED";
-  let lowest = STATUS_LADDER.length - 1;
-  for (const s of live) {
-    const idx = STATUS_LADDER.indexOf(s);
-    if (idx !== -1 && idx < lowest) lowest = idx;
-  }
-  return STATUS_LADDER[lowest]!;
-}
 
 /* --------------------------------------------------------- supplier writes */
 
@@ -342,7 +300,7 @@ export async function updateOrderStatus(
         supplierOrderId: current.id,
         status: next,
         actor: "supplier",
-        note: note || defaultNote(next),
+        note: note || defaultStatusNote(next),
       },
     });
 
@@ -369,22 +327,6 @@ export async function updateOrderStatus(
   });
 }
 
-function defaultNote(status: OrderStatus) {
-  switch (status) {
-    case "ACCEPTED":
-      return "Accepted — stock confirmed against this lot";
-    case "PREPARING":
-      return "Cutting and rolling in progress";
-    case "READY_FOR_DISPATCH":
-      return "Rolled, wrapped and labelled for dispatch";
-    case "COMPLETED":
-      return "Handed to carrier";
-    case "CANCELLED":
-      return "Cancelled by the mill — stock returned";
-    default:
-      return "Order placed";
-  }
-}
 
 /* ------------------------------------------------------ supplier dashboard */
 

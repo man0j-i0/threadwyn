@@ -6,6 +6,9 @@ import { cn, formatMoney } from "@/lib/utils";
 
 type Point = { label: string; value: number };
 
+/** Module constant so the geometry memo has a stable dependency. */
+const PAD = { top: 18, right: 16, bottom: 26, left: 48 };
+
 /**
  * Twelve-week order value. Deliberately a **single series**, which decides most
  * of the design:
@@ -38,7 +41,6 @@ export function TrendChart({
 
   const W = 640;
   const H = 200;
-  const PAD = { top: 18, right: 16, bottom: 26, left: 48 };
 
   const geometry = useMemo(() => {
     const max = Math.max(...data.map((d) => d.value), 1);

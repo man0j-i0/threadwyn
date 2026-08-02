@@ -6,7 +6,7 @@ import { ArrowUp, Keyboard, Microphone, SkipForward, Sparkle } from "@phosphor-i
 
 import { cn } from "@/lib/utils";
 import { WeaverMark } from "@/components/brand/weaver-mark";
-import { Button } from "@/components/ui/button";
+
 import { useVoice } from "@/components/ai/use-voice";
 
 export type ScriptStep = { key: string; prompt: string; hint: string };

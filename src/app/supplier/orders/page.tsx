@@ -4,7 +4,8 @@ import type { OrderStatus } from "@prisma/client";
 import { ArrowRight } from "@phosphor-icons/react/dist/ssr";
 
 import { requireSupplierPage } from "@/lib/auth/guards";
-import { getSupplierOrders, STATUS_LABELS, STATUS_TONES } from "@/server/services/order-service";
+import { getSupplierOrders } from "@/server/services/order-service";
+import { STATUS_LABELS, STATUS_TONES } from "@/lib/order-status";
 import { serialize } from "@/lib/serialize";
 import { cn, formatDate, formatMetres, formatMoney, formatRelative, pluralise } from "@/lib/utils";
 import { Badge, StatusDot } from "@/components/ui/badge";
