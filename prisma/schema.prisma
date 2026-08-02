@@ -1,0 +1,428 @@
+// Threadwyn — data model
+//
+// Two modelling calls worth reading before you change anything here:
+//
+// 1. Order → SupplierOrder → OrderItem.
+//    A buyer's cart can span several mills. One flat Order would leak every
+//    supplier's lines to every other supplier and make "order status"
+//    meaningless. So a purchase (Order) fans out into one SupplierOrder per
+//    supplier, each with its own lifecycle and event timeline. The buyer tracks
+//    the parent; a supplier can only ever read and mutate their own child.
+//
+// 2. OrderItem snapshots the spec.
+//    Price, composition, GSM and width are copied onto the line at checkout.
+//    A supplier editing a product must never silently rewrite history on an
+//    order that has already been placed.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  BUYER
+  SUPPLIER
+}
+
+enum ProductStatus {
+  DRAFT
+  ACTIVE
+  OUT_OF_STOCK
+  ARCHIVED
+}
+
+enum OrderStatus {
+  PENDING
+  ACCEPTED
+  PREPARING
+  READY_FOR_DISPATCH
+  COMPLETED
+  CANCELLED
+}
+
+enum Weave {
+  PLAIN
+  TWILL
+  SATIN
+  JACQUARD
+  HERRINGBONE
+  JERSEY
+  RIB
+  DOBBY
+  CANVAS
+  CREPE
+}
+
+// ---------------------------------------------------------------- identity
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  name         String
+  role         Role
+  avatarHue    Int      @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  buyerProfile    BuyerProfile?
+  supplierProfile SupplierProfile?
+  cart            Cart?
+  orders          Order[]
+  conversations   AiConversation[]
+
+  @@index([role])
+}
+
+model BuyerProfile {
+  id     String @id @default(cuid())
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  businessName     String
+  businessType     String // BRAND | MANUFACTURER | BOUTIQUE | EXPORTER | RETAILER | OTHER
+  industry         String
+  city             String?
+  categoryInterest String[] // category slugs
+  preferredFabrics String[] // fibre keys
+  typicalOrderQty  String // "under-500" | "500-2000" | "2000-10000" | "10000-plus"
+  budgetMin        Int?
+  budgetMax        Int?
+  notes            String?
+
+  // How the profile was captured. Kept so we can measure whether the
+  // conversational path actually beats the form.
+  onboardingMode String?
+  onboardedAt    DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model SupplierProfile {
+  id     String @id @default(cuid())
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  businessName String
+  slug         String  @unique
+  businessType String // MILL | WHOLESALER | HANDLOOM | CONVERTER | AGENT
+  tagline      String?
+  description  String?
+
+  contactEmail String
+  contactPhone String
+
+  addressLine1 String
+  addressLine2 String?
+  city         String
+  state        String
+  postalCode   String
+  country      String  @default("India")
+
+  // { "mon": { "open": "09:00", "close": "18:00" }, ..., "sun": null }
+  operatingHours Json?
+
+  categories      String[]
+  fabricTypes     String[]
+  moqMetres       Int      @default(100)
+  leadTimeDays    Int      @default(10)
+  yearEstablished Int?
+  certifications  String[]
+
+  verified    Boolean @default(false)
+  rating      Float   @default(0)
+  ratingCount Int     @default(0)
+
+  onboardingMode String?
+  onboardedAt    DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  products       Product[]
+  supplierOrders SupplierOrder[]
+
+  @@index([verified])
+}
+
+// --------------------------------------------------------------- catalogue
+
+model Category {
+  id          String  @id @default(cuid())
+  name        String
+  slug        String  @unique
+  description String
+  blurb       String
+  accentHex   String
+  position    Int     @default(0)
+  featured    Boolean @default(false)
+
+  products Product[]
+
+  @@index([position])
+}
+
+model Product {
+  id         String          @id @default(cuid())
+  supplierId String
+  supplier   SupplierProfile @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  categoryId String
+  category   Category        @relation(fields: [categoryId], references: [id])
+
+  name        String
+  slug        String @unique
+  description String
+
+  // --- the specs a buyer actually decides on ---
+  composition String // "100% Organic Cotton"
+  fibres      String[] // ["cotton"] — filterable
+  weave       Weave
+  gsm         Int
+  widthCm     Int
+  finish      String
+  handFeel    String
+  useCases    String[]
+  sustainability String[]
+
+  pricePerMetre  Decimal  @db.Decimal(10, 2)
+  compareAtPrice Decimal? @db.Decimal(10, 2)
+  currency       String   @default("INR")
+
+  moqMetres    Int
+  stockMetres  Int
+  leadTimeDays Int
+
+  status   ProductStatus @default(ACTIVE)
+  featured Boolean       @default(false)
+
+  // Denormalised lexical haystack. Rebuilt whenever the product is written, so
+  // keyword search never needs a join fan-out.
+  searchText String @default("")
+
+  // Semantic index. Kept as a plain Float[] rather than pgvector: at catalogue
+  // scale an in-process cosine pass is sub-millisecond and needs no extension.
+  // Past ~50k SKUs this moves to pgvector + HNSW — see docs/01_master_plan.md.
+  embedding Float[]
+
+  viewCount Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  colorways  ProductColorway[]
+  images     ProductImage[]
+  cartItems  CartItem[]
+  orderItems OrderItem[]
+
+  @@index([categoryId, status])
+  @@index([supplierId, status])
+  @@index([status, featured])
+  @@index([pricePerMetre])
+  @@index([gsm])
+}
+
+model ProductColorway {
+  id        String  @id @default(cuid())
+  productId String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  name        String
+  hex         String
+  stockMetres Int    @default(0)
+  position    Int    @default(0)
+
+  cartItems CartItem[]
+
+  @@index([productId])
+}
+
+model ProductImage {
+  id        String  @id @default(cuid())
+  productId String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  url      String
+  alt      String
+  position Int    @default(0)
+
+  @@index([productId, position])
+}
+
+/// Supplier-uploaded binaries. Served through /api/v1/images/[id] with a long
+/// cache header. Kept in Postgres rather than the filesystem because serverless
+/// hosts have an ephemeral disk — an uploaded photo must survive a cold start.
+model UploadedImage {
+  id        String   @id @default(cuid())
+  mimeType  String
+  byteSize  Int
+  data      Bytes
+  createdAt DateTime @default(now())
+}
+
+// -------------------------------------------------------------------- cart
+
+model Cart {
+  id        String   @id @default(cuid())
+  buyerId   String   @unique
+  buyer     User     @relation(fields: [buyerId], references: [id], onDelete: Cascade)
+  updatedAt DateTime @updatedAt
+
+  items CartItem[]
+}
+
+model CartItem {
+  id     String @id @default(cuid())
+  cartId String
+  cart   Cart   @relation(fields: [cartId], references: [id], onDelete: Cascade)
+
+  productId String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  colorwayId String?
+  colorway   ProductColorway? @relation(fields: [colorwayId], references: [id], onDelete: SetNull)
+
+  quantityMetres Int
+  addedAt        DateTime @default(now())
+
+  // Postgres treats NULLs as distinct, so this cannot enforce one-row-per
+  // product when no colorway is chosen. Deduplication lives in CartService.
+  @@index([cartId])
+  @@index([productId])
+}
+
+// ------------------------------------------------------------------ orders
+
+model Order {
+  id          String @id @default(cuid())
+  orderNumber String @unique
+  buyerId     String
+  buyer       User   @relation(fields: [buyerId], references: [id], onDelete: Cascade)
+
+  subtotal    Decimal @db.Decimal(12, 2)
+  shippingFee Decimal @db.Decimal(12, 2)
+  tax         Decimal @db.Decimal(12, 2)
+  total       Decimal @db.Decimal(12, 2)
+  currency    String  @default("INR")
+
+  shippingName       String
+  shippingCompany    String?
+  shippingPhone      String
+  shippingEmail      String
+  shippingLine1      String
+  shippingLine2      String?
+  shippingCity       String
+  shippingState      String
+  shippingPostalCode String
+  shippingCountry    String  @default("India")
+  deliveryNotes      String?
+
+  placedAt DateTime @default(now())
+
+  supplierOrders SupplierOrder[]
+
+  @@index([buyerId, placedAt])
+}
+
+model SupplierOrder {
+  id      String @id @default(cuid())
+  orderId String
+  order   Order  @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  supplierId String
+  supplier   SupplierProfile @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+
+  reference String      @unique
+  status    OrderStatus @default(PENDING)
+  subtotal  Decimal     @db.Decimal(12, 2)
+
+  expectedReadyAt DateTime?
+  supplierNote    String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  items  OrderItem[]
+  events OrderEvent[]
+
+  @@index([supplierId, status])
+  @@index([orderId])
+}
+
+model OrderItem {
+  id              String        @id @default(cuid())
+  supplierOrderId String
+  supplierOrder   SupplierOrder @relation(fields: [supplierOrderId], references: [id], onDelete: Cascade)
+
+  // Nulled rather than cascaded: deleting a product must not erase the line
+  // item a buyer paid attention to.
+  productId String?
+  product   Product? @relation(fields: [productId], references: [id], onDelete: SetNull)
+
+  // --- spec snapshot, frozen at checkout ---
+  productName  String
+  productSlug  String
+  colorwayName String?
+  colorwayHex  String?
+  composition  String
+  gsm          Int
+  widthCm      Int
+  weave        String
+
+  unitPrice      Decimal @db.Decimal(10, 2)
+  quantityMetres Int
+  lineTotal      Decimal @db.Decimal(12, 2)
+
+  @@index([supplierOrderId])
+}
+
+model OrderEvent {
+  id              String        @id @default(cuid())
+  supplierOrderId String
+  supplierOrder   SupplierOrder @relation(fields: [supplierOrderId], references: [id], onDelete: Cascade)
+
+  status    OrderStatus
+  note      String?
+  actor     String // "buyer" | "supplier" | "system"
+  createdAt DateTime    @default(now())
+
+  @@index([supplierOrderId, createdAt])
+}
+
+// ---------------------------------------------------------------------- ai
+
+model AiConversation {
+  id String @id @default(cuid())
+
+  userId String?
+  user   User?   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Anonymous browsers get a cookie-scoped session so the assistant keeps
+  // context before sign-in.
+  sessionId String
+  surface   String // "assistant" | "onboarding"
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  messages AiMessage[]
+
+  @@index([sessionId, surface])
+  @@index([userId])
+}
+
+model AiMessage {
+  id             String         @id @default(cuid())
+  conversationId String
+  conversation   AiConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  role      String // "user" | "assistant" | "tool"
+  content   String
+  meta      Json? // tool calls, cited product ids, extracted filters
+  createdAt DateTime @default(now())
+
+  @@index([conversationId, createdAt])
+}

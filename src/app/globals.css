@@ -1,0 +1,502 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* ============================================================================
+   THREADWYN DESIGN TOKENS
+   Editorial-luxury textile language. Warm neutrals, deep emerald trust,
+   terracotta accent. Every colour pair below is checked against WCAG AA.
+   Never hardcode a hex in a component — reach for a token.
+   ========================================================================= */
+
+:root {
+  color-scheme: light;
+
+  /* --- surfaces (warm, linen-derived) --- */
+  --canvas: #fbf9f5;
+  --canvas-veil: #f4f1ea;
+  --surface: #ffffff;
+  --surface-sunken: #f4f1ea;
+  --surface-inset: #efebe1;
+
+  /* --- ink (warm charcoal, never pure black) --- */
+  --ink: #191713; /* 16.0:1 on canvas */
+  --ink-muted: #55504a; /*  7.6:1 on canvas */
+  --ink-subtle: #746c5f; /*  4.9:1 on canvas — safe for 12px meta */
+  --ink-inverse: #fbf9f5;
+
+  /* --- lines --- */
+  --line: #e5dfd3;
+  --line-strong: #d4ccbc;
+  --line-inverse: rgba(255, 255, 255, 0.14);
+
+  /* --- emerald: the trust colour --- */
+  --brand: #0f4d35; /*  9.4:1 on canvas, 9.9:1 with white text */
+  --brand-hover: #0b3a28;
+  --brand-active: #082a1d;
+  --brand-soft: #e7efea;
+  --brand-soft-hover: #dbe7e0;
+  --brand-line: #b9cfc3;
+  --brand-ink: #0d4430;
+
+  /* --- terracotta: the warm accent, used sparingly --- */
+  --accent: #a9543a; /*  5.0:1 on canvas, 5.2:1 with white text */
+  --accent-hover: #8f452f;
+  --accent-soft: #f7ece7;
+  --accent-line: #e2c5b9;
+
+  /* --- brass: verification + provenance marks only --- */
+  --brass: #8a6d2f;
+  --brass-soft: #f5efdf;
+
+  /* --- semantic states --- */
+  --danger: #a3231a;
+  --danger-soft: #fbeae8;
+  --danger-line: #eec6c1;
+  --warn: #8a5b14;
+  --warn-soft: #fbf1df;
+  --warn-line: #e8d5aa;
+  --positive: #146143;
+  --positive-soft: #e7efea;
+  --positive-line: #b9cfc3;
+  --info: #1f4f6b;
+  --info-soft: #e8f0f4;
+  --info-line: #bcd3de;
+
+  /* --- focus --- */
+  --ring: #0f4d35;
+  --ring-offset: #fbf9f5;
+
+  /* --- elevation: warm-tinted, never neutral black --- */
+  --shadow-xs: 0 1px 1px rgba(41, 35, 25, 0.04);
+  --shadow-sm: 0 1px 2px rgba(41, 35, 25, 0.05), 0 1px 1px rgba(41, 35, 25, 0.03);
+  --shadow-md: 0 2px 4px rgba(41, 35, 25, 0.04), 0 8px 16px -6px rgba(41, 35, 25, 0.07);
+  --shadow-lg: 0 4px 8px rgba(41, 35, 25, 0.04), 0 20px 40px -12px rgba(41, 35, 25, 0.1);
+  --shadow-xl: 0 8px 16px rgba(41, 35, 25, 0.05), 0 32px 64px -16px rgba(41, 35, 25, 0.14);
+  --shadow-inset: inset 0 1px 0 rgba(255, 255, 255, 0.7);
+
+  /* --- grain intensity --- */
+  --grain-opacity: 0.035;
+}
+
+.dark {
+  color-scheme: dark;
+
+  --canvas: #14120f;
+  --canvas-veil: #1a1814;
+  --surface: #1c1a16;
+  --surface-sunken: #100e0c;
+  --surface-inset: #232019;
+
+  --ink: #f5f1e9; /* 15.3:1 on canvas */
+  --ink-muted: #b8b0a2; /*  7.9:1 */
+  --ink-subtle: #918a7d; /*  4.9:1 */
+  --ink-inverse: #191713;
+
+  --line: #2e2a24;
+  --line-strong: #423c33;
+  --line-inverse: rgba(0, 0, 0, 0.2);
+
+  /* desaturated tonal variants, not inverted values */
+  --brand: #6cbf96;
+  --brand-hover: #85cfa9;
+  --brand-active: #9adcba;
+  --brand-soft: #17281f;
+  --brand-soft-hover: #1e3529;
+  --brand-line: #2c4c3b;
+  --brand-ink: #8fd3ae;
+
+  --accent: #d68f72;
+  --accent-hover: #e2a288;
+  --accent-soft: #2a1d16;
+  --accent-line: #4a3125;
+
+  --brass: #c9a95e;
+  --brass-soft: #2a2418;
+
+  --danger: #e58a80;
+  --danger-soft: #2c1816;
+  --danger-line: #4d2823;
+  --warn: #d9ab63;
+  --warn-soft: #2a2115;
+  --warn-line: #493a20;
+  --positive: #6cbf96;
+  --positive-soft: #17281f;
+  --positive-line: #2c4c3b;
+  --info: #7db4d0;
+  --info-soft: #16232a;
+  --info-line: #274050;
+
+  --ring: #6cbf96;
+  --ring-offset: #14120f;
+
+  --shadow-xs: 0 1px 1px rgba(0, 0, 0, 0.3);
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4), 0 1px 1px rgba(0, 0, 0, 0.24);
+  --shadow-md: 0 2px 4px rgba(0, 0, 0, 0.3), 0 8px 16px -6px rgba(0, 0, 0, 0.45);
+  --shadow-lg: 0 4px 8px rgba(0, 0, 0, 0.3), 0 20px 40px -12px rgba(0, 0, 0, 0.55);
+  --shadow-xl: 0 8px 16px rgba(0, 0, 0, 0.35), 0 32px 64px -16px rgba(0, 0, 0, 0.6);
+  --shadow-inset: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+
+  --grain-opacity: 0.05;
+}
+
+@theme inline {
+  /* colours */
+  --color-canvas: var(--canvas);
+  --color-canvas-veil: var(--canvas-veil);
+  --color-surface: var(--surface);
+  --color-sunken: var(--surface-sunken);
+  --color-inset: var(--surface-inset);
+
+  --color-ink: var(--ink);
+  --color-muted: var(--ink-muted);
+  --color-subtle: var(--ink-subtle);
+  --color-inverse: var(--ink-inverse);
+
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+
+  --color-brand: var(--brand);
+  --color-brand-hover: var(--brand-hover);
+  --color-brand-active: var(--brand-active);
+  --color-brand-soft: var(--brand-soft);
+  --color-brand-soft-hover: var(--brand-soft-hover);
+  --color-brand-line: var(--brand-line);
+  --color-brand-ink: var(--brand-ink);
+
+  --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
+  --color-accent-soft: var(--accent-soft);
+  --color-accent-line: var(--accent-line);
+
+  --color-brass: var(--brass);
+  --color-brass-soft: var(--brass-soft);
+
+  --color-danger: var(--danger);
+  --color-danger-soft: var(--danger-soft);
+  --color-danger-line: var(--danger-line);
+  --color-warn: var(--warn);
+  --color-warn-soft: var(--warn-soft);
+  --color-warn-line: var(--warn-line);
+  --color-positive: var(--positive);
+  --color-positive-soft: var(--positive-soft);
+  --color-positive-line: var(--positive-line);
+  --color-info: var(--info);
+  --color-info-soft: var(--info-soft);
+  --color-info-line: var(--info-line);
+
+  --color-ring: var(--ring);
+
+  /* type */
+  --font-display: var(--font-fraunces), "Iowan Old Style", Georgia, serif;
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, "SF Mono", monospace;
+
+  /* radii — concentric-friendly scale */
+  --radius-xs: 6px;
+  --radius-sm: 10px;
+  --radius-md: 14px;
+  --radius-lg: 20px;
+  --radius-xl: 28px;
+  --radius-2xl: 36px;
+
+  /* elevation */
+  --shadow-xs: var(--shadow-xs);
+  --shadow-sm: var(--shadow-sm);
+  --shadow-md: var(--shadow-md);
+  --shadow-lg: var(--shadow-lg);
+  --shadow-xl: var(--shadow-xl);
+
+  /* motion — every curve here has mass; nothing is `linear` */
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-spring: cubic-bezier(0.32, 0.72, 0, 1);
+  --ease-in-out-quint: cubic-bezier(0.83, 0, 0.17, 1);
+  --ease-back: cubic-bezier(0.34, 1.56, 0.64, 1);
+
+  /* layout */
+  --spacing-gutter: 1.25rem;
+  --breakpoint-xs: 24rem;
+}
+
+/* ============================================================================
+   BASE
+   ========================================================================= */
+
+* {
+  border-color: var(--line);
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  scroll-behavior: smooth;
+}
+
+body {
+  background-color: var(--canvas);
+  color: var(--ink);
+  font-family: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  font-feature-settings: "cv01" 1, "cv03" 1, "ss01" 1;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  min-height: 100dvh;
+}
+
+/* Woven paper grain. Fixed + pointer-events-none so it never repaints on scroll. */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  opacity: var(--grain-opacity);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+::selection {
+  background-color: var(--brand-soft);
+  color: var(--brand-ink);
+}
+
+/* Focus: always visible, never removed. 2px ring + offset for contrast on any surface. */
+:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+:focus:not(:focus-visible) {
+  outline: none;
+}
+
+/* Numerals in tables, prices, quantities and IDs must not jitter. */
+.tnum,
+table,
+input[type="number"] {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
+}
+
+/* Fraunces reads best slightly tightened at display sizes. */
+.font-display {
+  font-optical-sizing: auto;
+  font-variation-settings: "SOFT" 24, "WONK" 1;
+  letter-spacing: -0.018em;
+}
+
+/* ============================================================================
+   SCROLLBAR — thin, warm, unobtrusive
+   ========================================================================= */
+
+@media (pointer: fine) {
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--line-strong) transparent;
+  }
+  *::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  *::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  *::-webkit-scrollbar-thumb {
+    background-color: var(--line-strong);
+    border-radius: 999px;
+    border: 3px solid transparent;
+    background-clip: content-box;
+  }
+  *::-webkit-scrollbar-thumb:hover {
+    background-color: var(--ink-subtle);
+  }
+}
+
+/* ============================================================================
+   UTILITIES
+   ========================================================================= */
+
+@utility hairline {
+  box-shadow: 0 0 0 1px var(--line);
+}
+
+/* The "double-bezel": an outer tray holding an inner plate. Used on every
+   major card so surfaces read as machined objects rather than flat divs. */
+@utility bezel {
+  background-color: var(--canvas-veil);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-xl);
+  padding: 6px;
+}
+
+@utility bezel-core {
+  background-color: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: calc(var(--radius-xl) - 7px);
+  box-shadow: var(--shadow-inset);
+}
+
+@utility text-balance {
+  text-wrap: balance;
+}
+
+@utility text-pretty {
+  text-wrap: pretty;
+}
+
+/* Uppercase micro-label used for eyebrows, table headers and field labels. */
+@utility eyebrow {
+  font-size: 10px;
+  line-height: 1;
+  font-weight: 550;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  font-feature-settings: "ss01" 1;
+}
+
+@utility no-scrollbar {
+  scrollbar-width: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+/* Fades the edge of a horizontally scrolling rail so it reads as continuing. */
+@utility mask-fade-x {
+  mask-image: linear-gradient(to right, transparent, #000 24px, #000 calc(100% - 24px), transparent);
+}
+
+@utility mask-fade-b {
+  mask-image: linear-gradient(to bottom, #000 70%, transparent);
+}
+
+/* ============================================================================
+   KEYFRAMES
+   ========================================================================= */
+
+@keyframes tw-fade-up {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 14px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes tw-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes tw-scale-in {
+  from {
+    opacity: 0;
+    transform: scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes tw-shimmer {
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+@keyframes tw-pulse-ring {
+  0% {
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--brand) 40%, transparent);
+  }
+  70% {
+    box-shadow: 0 0 0 10px transparent;
+  }
+  100% {
+    box-shadow: 0 0 0 0 transparent;
+  }
+}
+
+@keyframes tw-thread {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes tw-marquee {
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+.animate-fade-up {
+  animation: tw-fade-up 0.6s var(--ease-out-expo) both;
+}
+.animate-fade-in {
+  animation: tw-fade-in 0.4s var(--ease-out-expo) both;
+}
+.animate-scale-in {
+  animation: tw-scale-in 0.3s var(--ease-out-expo) both;
+}
+
+/* Skeleton shimmer — a sweeping highlight, not a flat pulse. */
+.skeleton {
+  position: relative;
+  overflow: hidden;
+  background-color: var(--surface-inset);
+}
+.skeleton::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background-image: linear-gradient(
+    90deg,
+    transparent,
+    color-mix(in srgb, var(--surface) 60%, transparent),
+    transparent
+  );
+  animation: tw-shimmer 1.6s var(--ease-in-out-quint) infinite;
+}
+
+/* ============================================================================
+   REDUCED MOTION — honour it globally, then re-enable opacity-only fades so
+   content still resolves rather than snapping in with no feedback at all.
+   ========================================================================= */
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  .skeleton::after {
+    animation: none;
+  }
+}
+
+/* ============================================================================
+   PRINT — order confirmations get printed. Make them survive it.
+   ========================================================================= */
+
+@media print {
+  body::before,
+  [data-print-hide] {
+    display: none !important;
+  }
+  body {
+    background: #fff;
+    color: #000;
+  }
+}

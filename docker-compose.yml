@@ -1,0 +1,21 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: threadwyn-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: threadwyn
+      POSTGRES_PASSWORD: threadwyn
+      POSTGRES_DB: threadwyn
+    ports:
+      - "5433:5432"
+    volumes:
+      - threadwyn-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U threadwyn -d threadwyn"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  threadwyn-pgdata:
