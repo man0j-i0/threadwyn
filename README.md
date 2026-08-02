@@ -206,6 +206,7 @@ npm run db:up        # start Postgres
 npm run db:migrate   # apply migrations
 npm run db:seed      # reseed
 npm run db:reset     # drop, migrate, reseed
+npm run db:deploy    # apply migrations without prompting (production)
 npm run db:studio    # Prisma Studio
 ```
 
@@ -213,11 +214,19 @@ npm run db:studio    # Prisma Studio
 
 ## Deploying
 
-1. Provision Postgres (Neon, Supabase or RDS) and put the pooled connection string in `DATABASE_URL`.
-2. Set `AUTH_SECRET` (`openssl rand -base64 48`) and `NEXT_PUBLIC_APP_URL`.
-3. Optionally set `HF_TOKEN` to enable hosted inference. Without it the app runs on the deterministic engine.
-4. `npx prisma migrate deploy && npx tsx prisma/seed.ts`
-5. Deploy. `postinstall` runs `prisma generate`.
+Full walkthrough with the failure modes: **[`docs/03_deploy.md`](docs/03_deploy.md)**. In short — Neon for
+Postgres, Vercel for the app, both free tier, about fifteen minutes.
+
+1. Provision Postgres and put the **pooled** connection string in `DATABASE_URL`.
+2. Run migrations and the seed once, against the **direct** (non-pooled) string.
+3. Set `AUTH_SECRET` (`openssl rand -base64 48`) and `NEXT_PUBLIC_APP_URL`.
+4. Optionally set `HF_TOKEN`. Without it the app runs on the deterministic engine and every AI surface still
+   works.
+5. Deploy. `npm run build` runs `prisma generate` first.
+
+`binaryTargets` in `schema.prisma` includes `rhel-openssl-3.0.x` — without it Prisma generates an engine for
+the build container only and the deployed function throws on its first query. That is the most common
+Prisma-on-Vercel failure and it is already handled.
 
 Uploaded product photos are stored as bytes in Postgres and served from `/api/v1/images/[id]` with an
 immutable cache header — serverless hosts have an ephemeral filesystem, and an uploaded photo has to survive a
@@ -245,3 +254,4 @@ cold start.
 - [`docs/00_founding_engineer.md`](docs/00_founding_engineer.md) — the standards this was built to
 - [`docs/01_master_plan.md`](docs/01_master_plan.md) — architecture decisions and scope
 - [`docs/02_demo_script.md`](docs/02_demo_script.md) — the walkthrough
+- [`docs/03_deploy.md`](docs/03_deploy.md) — deployment, and what will bite you

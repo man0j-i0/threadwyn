@@ -16,6 +16,10 @@
 
 generator client {
   provider = "prisma-client-js"
+  // Vercel's runtime is Amazon Linux, not whatever you develop on. Without
+  // this, `prisma generate` in the build produces an engine for the build
+  // container only and the deployed function throws at its first query.
+  binaryTargets = ["native", "rhel-openssl-3.0.x"]
 }
 
 datasource db {

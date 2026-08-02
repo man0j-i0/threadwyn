@@ -47,6 +47,10 @@ next-env.d.ts
 # prisma
 prisma/*.db
 
-# misc
+# local agent tooling — not part of the application
+.claude/
 .agents/
 skills-lock.json
+.mcp.json
+CLAUDE.md
+design-system/
