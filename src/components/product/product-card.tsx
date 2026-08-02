@@ -6,6 +6,7 @@ import type { WeaveKey } from "@/lib/weave";
 import { FabricSwatch } from "./fabric-swatch";
 import { StockPill } from "./stock-pill";
 import { QuickAdd } from "./quick-add";
+import { LookInside } from "@/components/weavescope/look-inside";
 
 export type ProductCardData = {
   id: string;
@@ -74,7 +75,10 @@ export function ProductCard({
           </div>
         </div>
 
-        <div className="pointer-events-none absolute inset-x-2 top-2 flex items-start justify-between gap-2">
+        {/* Sits above the stretched product link so it navigates into WeaveScope. */}
+        <LookInside slug={product.slug} productName={product.name} />
+
+        <div className="pointer-events-none absolute inset-x-2 top-2 flex items-start justify-end gap-2">
           <StockPill stock={product.stockMetres} status={product.status} />
           {discounted ? (
             <span className="rounded-full bg-accent px-2 py-1 font-mono text-[10px] font-medium text-white shadow-[var(--shadow-sm)]">

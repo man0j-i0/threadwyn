@@ -18,6 +18,20 @@ const control = cn(
 
 const controlSizing = "min-h-11 px-3.5 py-2.5 text-sm";
 
+/**
+ * Shared checkbox styling. Lives here as a JS string rather than being inlined
+ * into each `className` attribute — the embedded SVG tick needs escaped quotes,
+ * which a JSX attribute string cannot carry.
+ */
+export const checkboxClass = cn(
+  "size-4 shrink-0 cursor-pointer appearance-none rounded-[4px] border border-line-strong bg-surface",
+  "transition-[background-color,border-color] duration-200",
+  "checked:border-brand checked:bg-brand",
+  "checked:bg-[url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M3.5 8.5l3 3 6-6' stroke='white' stroke-width='2.2' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E\")]",
+  "checked:bg-center checked:bg-no-repeat",
+  "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring",
+);
+
 const controlState = (invalid?: boolean) =>
   invalid
     ? "border-danger-line bg-danger-soft/40 focus:border-danger focus:shadow-[0_0_0_3px_var(--danger-soft)]"
