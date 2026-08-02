@@ -87,6 +87,33 @@ function tint(geo: THREE.BufferGeometry, colour: THREE.Color) {
 
 const SPAN = 9;
 
+/**
+ * Camera shots.
+ *
+ * Each beat gets a deliberate framing rather than one linear dolly across the
+ * whole scroll: the needle is a centred hero, the fibre pulls wide and low to
+ * feel enveloping, the twist punches in tight and off-axis so the helix reads,
+ * and the last shot eases back out to hand over to the swatch.
+ *
+ * Between shots the camera rolls and the focal length breathes. That is what
+ * separates a move that feels shot from one that feels interpolated.
+ */
+type Shot = { at: number; pos: readonly [number, number, number]; fov: number; roll: number };
+
+const SHOTS: readonly Shot[] = [
+  { at: 0.0, pos: [0, 0.16, 4.9], fov: 40, roll: 0 },
+  { at: 0.33, pos: [-0.75, 0.42, 3.5], fov: 48, roll: -0.05 },
+  { at: 0.63, pos: [0.62, -0.22, 2.15], fov: 33, roll: 0.07 },
+  { at: 0.92, pos: [0, 0.24, 3.4], fov: 42, roll: 0 },
+];
+
+/** Smootherstep — zero first and second derivative at both ends, so a shot
+ *  leaves and arrives without a visible kink. */
+function smoother(t: number) {
+  const x = THREE.MathUtils.clamp(t, 0, 1);
+  return x * x * x * (x * (x * 6 - 15) + 10);
+}
+
 /* --------------------------------------------------------------- fibre --- */
 
 /**
@@ -141,45 +168,83 @@ function buildFibre(count: number, palette: Palette, seed: number, radial: numbe
 /* ---------------------------------------------------------------- yarn --- */
 
 /**
- * The same filaments, now spiralling around shared axes. Z-twist, which is what
- * almost all commercial ring-spun yarn uses, so the direction is the direction
- * you would see under a loupe.
+ * Bundle layout.
+ *
+ * A rank of parallel horizontal ropes reads as a diagram. Real yarn in a mill
+ * is stacked, crossed and receding, so the field mixes orientations: two hero
+ * bundles across the frame, a couple standing vertically well behind them, and
+ * a few on the diagonal between. Depth and scale fall off together, so the
+ * background ones sink into fog instead of competing.
+ */
+const BUNDLE_LAYOUT = [
+  { angle: 0, lane: -0.95, depth: 0.35, scale: 1, radius: 0.17, turns: 7 },
+  { angle: 0, lane: 0.85, depth: -0.15, scale: 0.94, radius: 0.15, turns: 8 },
+  { angle: 90, lane: -2.35, depth: -2.6, scale: 0.62, radius: 0.1, turns: 9 },
+  { angle: 90, lane: 2.15, depth: -3.1, scale: 0.55, radius: 0.095, turns: 10 },
+  { angle: 31, lane: 1.5, depth: -1.5, scale: 0.76, radius: 0.12, turns: 8 },
+  { angle: -24, lane: -1.9, depth: -1.9, scale: 0.7, radius: 0.115, turns: 9 },
+  { angle: 68, lane: 0.4, depth: -3.6, scale: 0.48, radius: 0.085, turns: 11 },
+] as const;
+
+/**
+ * Filaments spiralling around shared axes. Z-twist, which is what almost all
+ * commercial ring-spun yarn uses, so the direction is the direction you would
+ * see under a loupe.
  */
 function buildYarn(count: number, palette: Palette, seed: number, radial: number, bundles: number) {
   const rand = rng(seed ^ 0x9e3779b9);
   const tubes: THREE.BufferGeometry[] = [];
-  const perBundle = Math.max(3, Math.round(count / bundles));
 
-  for (let b = 0; b < bundles; b++) {
-    // Widely spaced and shallow in Z. The point of this beat is to read the
-    // helix, and bundles stacked in depth just occlude each other.
-    const lane = (b / Math.max(1, bundles - 1) - 0.5) * 2.5;
-    const depth = (rand() - 0.5) * 0.9;
-    const bendA = 0.1 + rand() * 0.14;
-    const bendF = 0.45 + rand() * 0.35;
+  const layout = BUNDLE_LAYOUT.slice(0, Math.max(3, bundles));
+  const perBundle = Math.max(5, Math.round(count / layout.length));
+
+  for (const slot of layout) {
+    const rad = (slot.angle * Math.PI) / 180;
+    const cos = Math.cos(rad);
+    const sin = Math.sin(rad);
+
+    const bendA = (0.08 + rand() * 0.12) * slot.scale;
+    const bendF = 0.4 + rand() * 0.3;
     const bendP = rand() * Math.PI * 2;
-    const bundleR = 0.135 + rand() * 0.05;
-    const turns = 6 + Math.floor(rand() * 3);
+    const bundleR = slot.radius * slot.scale;
+    const span = SPAN * (slot.angle % 180 === 0 ? 1 : 1.35);
 
-    for (let f = 0; f < perBundle; f++) {
-      const phase = (f / perBundle) * Math.PI * 2 + rand() * 0.35;
+    // Background bundles carry fewer filaments — nobody counts them, and they
+    // are the cheapest place to give the frame budget back.
+    const filaments = Math.max(4, Math.round(perBundle * (0.45 + slot.scale * 0.55)));
+
+    for (let f = 0; f < filaments; f++) {
+      const phase = (f / filaments) * Math.PI * 2 + rand() * 0.3;
       const pts: THREE.Vector3[] = [];
       const SEG = 56;
 
-      for (let s = 0; s <= SEG; s++) {
-        const t = s / SEG;
-        const x = (t - 0.5) * SPAN;
-        // Axis of the bundle, gently sinuous.
-        const ay = lane + Math.sin(t * Math.PI * 2 * bendF + bendP) * bendA;
-        const az = depth + Math.cos(t * Math.PI * 2 * bendF * 0.7 + bendP) * bendA * 0.8;
-        // Helix around it.
-        const a = phase + t * Math.PI * 2 * turns;
-        pts.push(new THREE.Vector3(x, ay + Math.sin(a) * bundleR, az + Math.cos(a) * bundleR));
+      for (let st = 0; st <= SEG; st++) {
+        const t = st / SEG;
+        const along = (t - 0.5) * span;
+        const off = Math.sin(t * Math.PI * 2 * bendF + bendP) * bendA;
+        const a = phase + t * Math.PI * 2 * slot.turns;
+
+        // Build in the bundle's own frame, then rotate into the scene.
+        const lx = along;
+        const ly = slot.lane + off + Math.sin(a) * bundleR;
+        const z = slot.depth + Math.cos(a) * bundleR + Math.cos(t * Math.PI * 2 * bendF * 0.7 + bendP) * bendA * 0.7;
+
+        pts.push(new THREE.Vector3(lx * cos - ly * sin, lx * sin + ly * cos, z));
       }
 
       const curve = new THREE.CatmullRomCurve3(pts, false, "catmullrom", 0.5);
-      const tube = new THREE.TubeGeometry(curve, SEG * 2, 0.024 + rand() * 0.011, radial, false);
-      tubes.push(tint(tube, palette.tones[Math.floor(rand() * palette.tones.length)]!));
+      const r = (0.023 + rand() * 0.01) * slot.scale;
+      const tube = new THREE.TubeGeometry(curve, SEG * 2, r, radial, false);
+
+      // Deeper bundles pull from the darker end of the ramp, so depth reads
+      // even before the fog gets to them.
+      const bias = slot.scale > 0.85 ? 1 : slot.scale > 0.65 ? 0 : -1;
+      const idx = THREE.MathUtils.clamp(
+        Math.floor(rand() * palette.tones.length) + bias,
+        0,
+        palette.tones.length - 1,
+      );
+      tubes.push(tint(tube, palette.tones[idx]!));
     }
   }
 
@@ -215,7 +280,7 @@ function Field({
   const geos = useMemo(
     () => ({
       fibre: buildFibre(filaments, palette, seed, radial),
-      yarn: buildYarn(filaments, palette, seed, radial, quality === "high" ? 4 : 3),
+      yarn: buildYarn(filaments, palette, seed, radial, quality === "high" ? 7 : 4),
     }),
     [filaments, palette, seed, radial, quality],
   );
@@ -233,13 +298,15 @@ function Field({
   // follows this damped value instead of the raw one, which is the difference
   // between the camera stepping and the camera gliding.
   const eased = useRef(0);
+  const shot = useRef(new THREE.Vector3(0, 0.16, 4.9));
 
-  const { camera, gl } = useThree();
+  const { gl } = useThree();
 
   // Painted, not fetched — see env-map.ts. Metal needs something to reflect.
   const envMap = useMemo(() => makeStudioEnv(gl), [gl]);
 
   useFrame((state, delta) => {
+    const camera = state.camera as THREE.PerspectiveCamera;
     const raw = THREE.MathUtils.clamp(progress.current ?? 0, 0, 1);
     const t = state.clock.elapsedTime;
 
@@ -304,12 +371,47 @@ function Field({
       yarnRef.current.rotation.z = Math.sin(t * 0.08 + 1) * 0.02;
     }
 
-    // Camera follows the already-damped value, so this can track tightly
-    // without inheriting the jitter of raw scroll.
-    const k = 1 - Math.exp(-6 * Math.min(delta, 0.05));
-    const target = new THREE.Vector3(Math.sin(t * 0.05) * 0.18, 0.16 + p * 0.4, 4.9 - p * 1.8);
-    camera.position.lerp(target, k);
+    // --- camera -----------------------------------------------------------
+
+    // Find the shot pair we sit between and how far through we are.
+    let a = SHOTS[0]!;
+    let b = SHOTS[SHOTS.length - 1]!;
+    for (let i = 0; i < SHOTS.length - 1; i++) {
+      if (p >= SHOTS[i]!.at && p <= SHOTS[i + 1]!.at) {
+        a = SHOTS[i]!;
+        b = SHOTS[i + 1]!;
+        break;
+      }
+    }
+    const span = Math.max(1e-4, b.at - a.at);
+    const local = smoother((p - a.at) / span);
+
+    shot.current.set(
+      THREE.MathUtils.lerp(a.pos[0], b.pos[0], local),
+      THREE.MathUtils.lerp(a.pos[1], b.pos[1], local),
+      THREE.MathUtils.lerp(a.pos[2], b.pos[2], local),
+    );
+
+    // A slow handheld drift on top, so a held shot never looks frozen.
+    shot.current.x += Math.sin(t * 0.19) * 0.06;
+    shot.current.y += Math.cos(t * 0.14) * 0.04;
+
+    const k = 1 - Math.exp(-7 * Math.min(delta, 0.05));
+    camera.position.lerp(shot.current, k);
     camera.lookAt(0, 0, 0);
+
+    // Roll is applied after lookAt, which would otherwise flatten it. It peaks
+    // mid-transition and settles at each shot — the whip between beats.
+    const whip = Math.sin(local * Math.PI);
+    camera.rotateZ(THREE.MathUtils.lerp(a.roll, b.roll, local) + whip * 0.045);
+
+    // Focal length breathes through the move. Small numbers: past about six
+    // degrees this stops reading as a lens and starts reading as a glitch.
+    const fov = THREE.MathUtils.lerp(a.fov, b.fov, local) + whip * 3.5;
+    if (Math.abs(camera.fov - fov) > 0.01) {
+      camera.fov = THREE.MathUtils.lerp(camera.fov, fov, k);
+      camera.updateProjectionMatrix();
+    }
   });
 
   return (
