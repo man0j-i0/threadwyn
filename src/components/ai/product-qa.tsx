@@ -4,11 +4,11 @@ import { useState } from "react";
 import { ArrowUp, Microphone, Sparkle } from "@phosphor-icons/react";
 
 import { cn } from "@/lib/utils";
-import { modeLabel } from "@/lib/ai/mode-label";
+import { modeLabel, type AiMode } from "@/lib/ai/mode-label";
 import { WeaverMark } from "@/components/brand/weaver-mark";
 import { useVoice } from "./use-voice";
 
-type Exchange = { id: number; question: string; answer: string | null; mode?: "model" | "rules"; model?: string };
+type Exchange = { id: number; question: string; answer: string | null; mode?: AiMode; model?: string };
 
 let exchangeId = 0;
 
@@ -45,7 +45,7 @@ export function ProductQA({ slug, name, suggestions }: { slug: string; name: str
         body: JSON.stringify({ message: question, productSlug: slug, history: [] }),
       });
       const body = (await res.json()) as {
-        data?: { message: string; mode: "model" | "rules"; model: string };
+        data?: { message: string; mode: AiMode; model: string };
         error?: { message: string };
       };
 

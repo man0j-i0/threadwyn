@@ -14,7 +14,7 @@ import {
 } from "@phosphor-icons/react";
 
 import { cn, formatMetres, formatMoney } from "@/lib/utils";
-import { modeLabel } from "@/lib/ai/mode-label";
+import { modeLabel, type AiMode } from "@/lib/ai/mode-label";
 import { FabricSwatch } from "@/components/product/fabric-swatch";
 import { WeaverMark } from "@/components/brand/weaver-mark";
 import { useSpeech, useVoice } from "./use-voice";
@@ -43,7 +43,7 @@ type Turn = {
   citations?: Citation[];
   chips?: { label: string }[];
   searchHref?: string | null;
-  mode?: "model" | "rules";
+  mode?: AiMode;
   model?: string;
 };
 
@@ -127,7 +127,7 @@ export function AssistantDock({ productSlug, productName }: { productSlug?: stri
           citations: Citation[];
           chips: { label: string }[];
           searchHref: string | null;
-          mode: "model" | "rules";
+          mode: AiMode;
           model: string;
         };
         error?: { message: string };

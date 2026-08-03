@@ -12,6 +12,7 @@ import {
   type ProductFilters,
 } from "@/server/services/product-service";
 import { describeFilters, parseQuery } from "./nl-filters";
+import type { AiMode } from "./mode-label";
 import {
   activeProvider,
   complete,
@@ -41,8 +42,14 @@ export type AssistantReply = {
   citations: AssistantCitation[];
   chips: { key: string; label: string; value: string }[];
   searchHref: string | null;
-  /** Honest provenance, shown in the UI. Judges and users both deserve it. */
-  mode: "model" | "rules";
+  /**
+   * Honest provenance, shown in the UI. Judges and users both deserve it.
+   *
+   * Note the difference between `rules` and `fallback`: the search path answers
+   * deterministically on purpose, and reporting that as a degraded mode would
+   * be a lie in the opposite direction.
+   */
+  mode: AiMode;
   model: string;
 };
 
@@ -495,7 +502,10 @@ ${facts}`,
     citations: [citation],
     chips: [],
     searchHref: null,
-    mode: result?.content ? "model" : "rules",
+    // We asked a model and it gave us nothing usable — that is a fallback, not
+    // the engine being chosen. The `activeProvider() === "none"` branch above
+    // already returned for the case where there was no model to ask.
+    mode: result?.content ? "model" : "fallback",
     model: providerLabel(),
   };
 }

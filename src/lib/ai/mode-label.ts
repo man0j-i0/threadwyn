@@ -17,12 +17,27 @@
  * client components.
  */
 
+/**
+ * - `model`    — a model produced this answer.
+ * - `rules`    — the deterministic engine produced it *by design*. A query that
+ *                parses cleanly into filters is answered from the query result
+ *                itself; calling a model there would add latency and a chance
+ *                of being wrong about numbers we already know exactly.
+ * - `fallback` — we wanted a model and did not get a usable answer.
+ */
 export type AiMode = "model" | "rules" | "fallback";
 
 const NO_PROVIDER = "rule-based engine";
 
 export function modeLabel(mode: AiMode, model: string, noun = "rule-based engine"): string {
   if (mode === "model") return model;
+
+  // No provider at all — worth surfacing, since it is usually unintended.
   if (model === NO_PROVIDER) return `${noun} · no model configured`;
-  return `${noun} · ${model} unavailable, using rules`;
+
+  // A model exists and let us down. Distinct from the line below, which is the
+  // engine doing its job.
+  if (mode === "fallback") return `${noun} · ${model} unavailable, using rules`;
+
+  return noun;
 }
