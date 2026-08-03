@@ -15,7 +15,8 @@
     "db:reset": "prisma migrate reset --force",
     "typecheck": "tsc --noEmit",
     "postinstall": "prisma generate",
-    "db:deploy": "prisma migrate deploy"
+    "db:deploy": "prisma migrate deploy",
+    "ai:check": "tsx scripts/ai-check.ts"
   },
   "dependencies": {
     "@phosphor-icons/react": "^2.1.10",
