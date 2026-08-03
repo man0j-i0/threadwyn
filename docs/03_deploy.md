@@ -129,6 +129,18 @@ query. The most common Prisma-on-Vercel failure.
 **Connection exhaustion.** Use the *pooled* string. `too many connections`
 means you used the direct one.
 
+**Function region vs database region.** This one cost us 4–9 seconds on the
+landing page. Vercel defaults new projects to `iad1` (Washington DC); our
+database is in Singapore, so every query crossed the Pacific. `vercel.json`
+now pins functions to `sin1`. If you move the database, move this too — they
+must match. Check with:
+
+```bash
+curl -sI https://<project>.vercel.app/marketplace | grep -i x-vercel-id
+# bom1::sin1::...
+#        ↑ the region the function ran in — this is the one that matters
+```
+
 **Function timeout on AI.** Vercel Hobby defaults to a 10s function. A slow
 model reply would be killed by the platform *before* our own fallback fires,
 so the request fails instead of degrading to the rule engine. If you see AI
