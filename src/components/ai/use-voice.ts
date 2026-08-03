@@ -155,6 +155,7 @@ export function useVoice({
  *  office suddenly talking — and always interruptible. */
 export function useSpeech() {
   const [speaking, setSpeaking] = useState(false);
+  const keepAlive = useRef<number | null>(null);
 
   const supported = useSyncExternalStore(
     noopSubscribe,
@@ -162,35 +163,97 @@ export function useSpeech() {
     () => false,
   );
 
-  // Never leave a page still talking.
-  useEffect(() => {
-    return () => {
-      if (typeof window !== "undefined" && "speechSynthesis" in window) window.speechSynthesis.cancel();
-    };
-  }, []);
-
-  const speak = useCallback((text: string) => {
-    if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
-    window.speechSynthesis.cancel();
-
-    // Strip markdown emphasis so the voice doesn't read asterisks aloud.
-    const clean = text.replace(/[*_`#>]/g, "").replace(/\s+/g, " ").trim();
-    if (!clean) return;
-
-    const utterance = new SpeechSynthesisUtterance(clean);
-    utterance.rate = 1.03;
-    utterance.pitch = 1;
-    utterance.onstart = () => setSpeaking(true);
-    utterance.onend = () => setSpeaking(false);
-    utterance.onerror = () => setSpeaking(false);
-    window.speechSynthesis.speak(utterance);
+  const stopKeepAlive = useCallback(() => {
+    if (keepAlive.current !== null) {
+      window.clearInterval(keepAlive.current);
+      keepAlive.current = null;
+    }
   }, []);
 
   const cancel = useCallback(() => {
     if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
+    stopKeepAlive();
     window.speechSynthesis.cancel();
     setSpeaking(false);
-  }, []);
+  }, [stopKeepAlive]);
+
+  const speak = useCallback(
+    (text: string) => {
+      if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
+
+      // Strip markdown emphasis so the voice doesn't read asterisks aloud.
+      const clean = text.replace(/[*_`#>]/g, "").replace(/\s+/g, " ").trim();
+      if (!clean) return;
+
+      const synth = window.speechSynthesis;
+
+      const start = () => {
+        const utterance = new SpeechSynthesisUtterance(clean);
+        utterance.rate = 1.03;
+        utterance.pitch = 1;
+        utterance.lang = "en-GB";
+
+        // getVoices() is empty until the engine has loaded them. Picking one
+        // explicitly avoids the silent no-op you get on a cold first call.
+        const voices = synth.getVoices();
+        const preferred =
+          voices.find((v) => /en-GB/i.test(v.lang) && /female|Google|Natural/i.test(v.name)) ??
+          voices.find((v) => /en-GB/i.test(v.lang)) ??
+          voices.find((v) => /^en/i.test(v.lang));
+        if (preferred) utterance.voice = preferred;
+
+        utterance.onstart = () => setSpeaking(true);
+        utterance.onend = () => {
+          stopKeepAlive();
+          setSpeaking(false);
+        };
+        utterance.onerror = () => {
+          stopKeepAlive();
+          setSpeaking(false);
+        };
+
+        synth.speak(utterance);
+
+        // Chrome silently stops after ~15s. Pumping pause/resume keeps a long
+        // reply alive to the end; harmless everywhere else.
+        stopKeepAlive();
+        keepAlive.current = window.setInterval(() => {
+          if (!synth.speaking) {
+            stopKeepAlive();
+            return;
+          }
+          synth.pause();
+          synth.resume();
+        }, 10_000);
+      };
+
+      // Calling speak() in the same tick as cancel() leaves Chrome's queue in a
+      // state where the new utterance never fires. Yield a frame between them.
+      if (synth.speaking || synth.pending) {
+        synth.cancel();
+        window.setTimeout(start, 120);
+      } else if (synth.getVoices().length === 0) {
+        // First call before the voice list has loaded — wait for it once.
+        const onVoices = () => {
+          synth.removeEventListener("voiceschanged", onVoices);
+          start();
+        };
+        synth.addEventListener("voiceschanged", onVoices);
+        window.setTimeout(start, 250); // in case the event never comes
+      } else {
+        start();
+      }
+    },
+    [stopKeepAlive],
+  );
+
+  // Never leave a page still talking.
+  useEffect(() => {
+    return () => {
+      stopKeepAlive();
+      if (typeof window !== "undefined" && "speechSynthesis" in window) window.speechSynthesis.cancel();
+    };
+  }, [stopKeepAlive]);
 
   return { supported, speaking, speak, cancel };
 }

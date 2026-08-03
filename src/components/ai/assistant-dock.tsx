@@ -66,6 +66,7 @@ export function AssistantDock({ productSlug, productName }: { productSlug?: stri
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
   const [readAloud, setReadAloud] = useState(false);
+  const [spokenId, setSpokenId] = useState<number | null>(null);
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -149,7 +150,10 @@ export function AssistantDock({ productSlug, productName }: { productSlug?: stri
         },
       ]);
 
-      if (readAloud) speech.speak(body.data.message);
+      if (readAloud) {
+        setSpokenId(turnId);
+        speech.speak(body.data.message);
+      }
     } catch (err) {
       setTurns((prev) => [
         ...prev,
@@ -255,17 +259,40 @@ export function AssistantDock({ productSlug, productName }: { productSlug?: stri
                   <button
                     type="button"
                     onClick={() => {
-                      if (readAloud) speech.cancel();
-                      setReadAloud((v) => !v);
+                      if (readAloud || speech.speaking) {
+                        speech.cancel();
+                        setReadAloud(false);
+                        return;
+                      }
+                      setReadAloud(true);
+                      // Act on the conversation that is already on screen.
+                      // A speaker button that only arms the *next* reply reads
+                      // as broken, because clicking it does nothing you can hear.
+                      const lastReply = [...turns].reverse().find((t) => t.role === "assistant");
+                      if (lastReply) speech.speak(lastReply.content);
                     }}
                     aria-pressed={readAloud}
-                    aria-label={readAloud ? "Turn off spoken replies" : "Read replies aloud"}
+                    aria-label={
+                      speech.speaking
+                        ? "Stop speaking"
+                        : readAloud
+                          ? "Turn off spoken replies"
+                          : "Read replies aloud"
+                    }
                     className={cn(
                       "grid size-8 cursor-pointer place-items-center rounded-full transition-colors",
-                      readAloud ? "bg-brand-soft text-brand-ink" : "text-subtle hover:bg-sunken hover:text-ink",
+                      speech.speaking
+                        ? "animate-[tw-pulse-ring_1.6s_ease-out_infinite] bg-brand text-white"
+                        : readAloud
+                          ? "bg-brand-soft text-brand-ink"
+                          : "text-subtle hover:bg-sunken hover:text-ink",
                     )}
                   >
-                    {readAloud ? <SpeakerHigh size={15} weight="light" /> : <SpeakerSlash size={15} weight="light" />}
+                    {readAloud || speech.speaking ? (
+                      <SpeakerHigh size={15} weight="light" />
+                    ) : (
+                      <SpeakerSlash size={15} weight="light" />
+                    )}
                   </button>
                 ) : null}
 
@@ -306,7 +333,24 @@ export function AssistantDock({ productSlug, productName }: { productSlug?: stri
                 ) : null}
 
                 {turns.map((t) => (
-                  <TurnBubble key={t.id} turn={t} />
+                  <TurnBubble
+                    key={t.id}
+                    turn={t}
+                    isSpeaking={speech.speaking && spokenId === t.id}
+                    onSpeak={
+                      t.role === "assistant" && speech.supported
+                        ? () => {
+                            if (speech.speaking && spokenId === t.id) {
+                              speech.cancel();
+                              setSpokenId(null);
+                              return;
+                            }
+                            setSpokenId(t.id);
+                            speech.speak(t.content);
+                          }
+                        : undefined
+                    }
+                  />
                 ))}
 
                 {busy ? (
@@ -407,7 +451,15 @@ export function AssistantDock({ productSlug, productName }: { productSlug?: stri
   );
 }
 
-function TurnBubble({ turn }: { turn: Turn }) {
+function TurnBubble({
+  turn,
+  onSpeak,
+  isSpeaking,
+}: {
+  turn: Turn;
+  onSpeak?: () => void;
+  isSpeaking?: boolean;
+}) {
   if (turn.role === "user") {
     return (
       <div className="flex justify-end">
@@ -419,9 +471,26 @@ function TurnBubble({ turn }: { turn: Turn }) {
   }
 
   return (
-    <div className="space-y-3">
-      <div className="text-[13.5px] leading-relaxed text-ink">
-        <RichText text={turn.content} />
+    <div className="group/turn space-y-3">
+      <div className="flex items-start gap-2">
+        <div className="min-w-0 flex-1 text-[13.5px] leading-relaxed text-ink">
+          <RichText text={turn.content} />
+        </div>
+        {onSpeak ? (
+          <button
+            type="button"
+            onClick={onSpeak}
+            aria-label={isSpeaking ? "Stop reading this reply" : "Read this reply aloud"}
+            className={cn(
+              "mt-0.5 grid size-7 shrink-0 cursor-pointer place-items-center rounded-full transition-[color,background-color,opacity]",
+              isSpeaking
+                ? "bg-brand text-white opacity-100"
+                : "text-subtle opacity-0 group-hover/turn:opacity-100 focus-visible:opacity-100 hover:bg-sunken hover:text-ink",
+            )}
+          >
+            {isSpeaking ? <SpeakerSlash size={13} weight="light" /> : <SpeakerHigh size={13} weight="light" />}
+          </button>
+        ) : null}
       </div>
 
       {turn.chips?.length ? (
