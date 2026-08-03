@@ -28,18 +28,34 @@ export function FilterPanel({ facets, onApplied }: { facets: Facets; onApplied?:
   const searchParams = useSearchParams();
   const [pending, startTransition] = useTransition();
 
+  // Every control used to read straight from searchParams, which only updates
+  // once the server has re-rendered. So a click produced no visible change for
+  // a few hundred milliseconds and the box looked like it had not registered.
+  // `draft` holds the intended state immediately; the URL catches up behind it.
+  const [draft, setDraft] = useState<string | null>(null);
+  const url = searchParams.toString();
+  const [lastUrl, setLastUrl] = useState(url);
+  if (lastUrl !== url) {
+    setLastUrl(url);
+    setDraft(null); // navigation landed — the URL is the truth again
+  }
+
+  const view = draft !== null ? new URLSearchParams(draft) : searchParams;
+
   const commit = useCallback(
     (mutate: (params: URLSearchParams) => void) => {
-      const params = new URLSearchParams(searchParams.toString());
+      const params = new URLSearchParams(draft ?? searchParams.toString());
       mutate(params);
       // Any filter change invalidates the current page number.
       params.delete("page");
+
+      setDraft(params.toString());
       startTransition(() => {
         router.push(`${pathname}?${params.toString()}`, { scroll: false });
         onApplied?.();
       });
     },
-    [router, pathname, searchParams, onApplied],
+    [router, pathname, searchParams, draft, onApplied],
   );
 
   const toggleMulti = useCallback(
@@ -67,10 +83,10 @@ export function FilterPanel({ facets, onApplied }: { facets: Facets; onApplied?:
   );
 
   const isOn = (key: string, value: string) =>
-    (searchParams.get(key) ?? "").split(",").filter(Boolean).includes(value);
+    (view.get(key) ?? "").split(",").filter(Boolean).includes(value);
 
   return (
-    <div className={cn("relative space-y-1", pending && "opacity-70")}>
+    <div className="relative space-y-1">
       {pending ? (
         <div className="pointer-events-none absolute -top-1 right-0 z-10">
           <Spinner className="size-4 text-brand" label="Applying filters" />
@@ -81,12 +97,12 @@ export function FilterPanel({ facets, onApplied }: { facets: Facets; onApplied?:
         <ToggleRow
           label="In stock only"
           hint="Hide fabrics awaiting a fresh lot"
-          checked={searchParams.get("inStock") === "1"}
+          checked={view.get("inStock") === "1"}
           onChange={(on) => setSingle("inStock", on ? "1" : null)}
         />
         <ToggleRow
           label="Featured by the mill"
-          checked={searchParams.get("featured") === "1"}
+          checked={view.get("featured") === "1"}
           onChange={(on) => setSingle("featured", on ? "1" : null)}
         />
       </Group>
@@ -112,7 +128,7 @@ export function FilterPanel({ facets, onApplied }: { facets: Facets; onApplied?:
           maxKey="priceMax"
           bounds={facets.price}
           unit="₹"
-          searchParams={searchParams}
+          searchParams={view}
           onCommit={setSingle}
           presets={[
             { label: "Under ₹300", min: null, max: 300 },
@@ -129,7 +145,7 @@ export function FilterPanel({ facets, onApplied }: { facets: Facets; onApplied?:
           maxKey="gsmMax"
           bounds={facets.gsm}
           unit=""
-          searchParams={searchParams}
+          searchParams={view}
           onCommit={setSingle}
           presets={[
             { label: "Light · ≤160", min: null, max: 160 },
@@ -202,21 +218,21 @@ export function FilterPanel({ facets, onApplied }: { facets: Facets; onApplied?:
           <NumberField
             label="Max MOQ"
             suffix="m"
-            value={searchParams.get("moqMax") ?? ""}
+            value={view.get("moqMax") ?? ""}
             onCommit={(v) => setSingle("moqMax", v)}
             placeholder="Any"
           />
           <NumberField
             label="Min stock on hand"
             suffix="m"
-            value={searchParams.get("stockMin") ?? ""}
+            value={view.get("stockMin") ?? ""}
             onCommit={(v) => setSingle("stockMin", v)}
             placeholder="Any"
           />
           <NumberField
             label="Max lead time"
             suffix="days"
-            value={searchParams.get("leadTimeMax") ?? ""}
+            value={view.get("leadTimeMax") ?? ""}
             onCommit={(v) => setSingle("leadTimeMax", v)}
             placeholder="Any"
           />
@@ -337,15 +353,20 @@ function ToggleRow({
         aria-label={label}
         onClick={() => onChange(!checked)}
         className={cn(
-          "relative h-5.5 w-9.5 shrink-0 cursor-pointer rounded-full transition-colors duration-300",
+          "relative h-[22px] w-[38px] shrink-0 cursor-pointer rounded-full",
+          "transition-colors duration-300",
+          "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring",
           checked ? "bg-brand" : "bg-line-strong",
         )}
       >
+        {/* Pinned in pixels. The knob is 18px inside a 38px track with 2px of
+            padding, so it travels exactly 16px and can never overhang an edge. */}
         <span
+          aria-hidden
           className={cn(
-            "absolute top-0.5 size-4.5 rounded-full bg-white shadow-[var(--shadow-xs)]",
+            "absolute top-[2px] left-[2px] size-[18px] rounded-full bg-white shadow-[var(--shadow-sm)]",
             "transition-transform duration-300 ease-[var(--ease-spring)]",
-            checked ? "translate-x-4.5" : "translate-x-0.5",
+            checked ? "translate-x-[16px]" : "translate-x-0",
           )}
         />
       </button>

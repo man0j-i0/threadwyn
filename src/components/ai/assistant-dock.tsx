@@ -196,19 +196,13 @@ export function AssistantDock({ productSlug, productName }: { productSlug?: stri
             data-print-hide
             className={cn(
               "group fixed right-4 bottom-4 z-70 flex cursor-pointer items-center gap-2.5 sm:right-6 sm:bottom-6",
-              "rounded-full border border-brand-line bg-brand py-3 pr-3 pl-5 text-white dark:text-[#08110d]",
+              "rounded-full border border-brand-line bg-brand px-5 py-3 text-white dark:text-[#08110d]",
               "shadow-[var(--shadow-lg)] transition-[transform,box-shadow] duration-300 ease-[var(--ease-spring)]",
               "hover:-translate-y-0.5 hover:shadow-[var(--shadow-xl)] active:scale-[0.98]",
             )}
           >
             <Sparkle size={16} weight="fill" />
             <span className="text-[13.5px] font-medium">Ask Threadwyn</span>
-            <span
-              aria-hidden
-              className="grid size-7 place-items-center rounded-full bg-white/15 font-mono text-[10px] dark:bg-black/15"
-            >
-              ⌘K
-            </span>
           </motion.button>
         ) : null}
       </AnimatePresence>

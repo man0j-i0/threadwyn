@@ -66,8 +66,13 @@ export function HeroSearch({ autoFocus = false }: { autoFocus?: boolean }) {
           autoFocus={autoFocus}
           onChange={(e) => setValue(e.target.value)}
           enterKeyHint="search"
+          autoComplete="off"
+          autoCorrect="off"
+          spellCheck={false}
           placeholder="Describe the fabric you need…"
-          className="min-h-11 min-w-0 flex-1 bg-transparent text-[15px] text-ink placeholder:text-subtle/80 focus:outline-none"
+          // The wrapper already shows focus, so the input suppresses its own
+          // ring — two nested highlights read as a bug, not as emphasis.
+          className="min-h-11 min-w-0 flex-1 bg-transparent text-[15px] text-ink placeholder:text-subtle/80 focus:outline-none focus-visible:outline-none"
         />
         <button
           type="submit"

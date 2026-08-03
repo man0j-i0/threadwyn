@@ -134,14 +134,7 @@ export default async function LandingPage() {
 
           <div className="mx-auto grid max-w-[1400px] items-center gap-14 px-4 pt-14 pb-20 sm:px-6 lg:grid-cols-[1.05fr_0.95fr] lg:gap-8 lg:px-10 lg:pt-24 lg:pb-28">
             <div className="max-w-2xl">
-              <Reveal>
-                <span className="inline-flex items-center gap-2 rounded-full border border-brand-line bg-brand-soft px-3 py-1.5">
-                  <span className="size-1.5 rounded-full bg-brand" />
-                  <span className="eyebrow text-brand-ink">Mill-direct textile sourcing</span>
-                </span>
-              </Reveal>
-
-              <h1 className="font-display mt-6 text-[2.6rem] leading-[1.02] font-medium tracking-[-0.025em] text-ink sm:text-6xl lg:text-[4.25rem]">
+              <h1 className="font-display text-[2.6rem] leading-[1.02] font-medium tracking-[-0.025em] text-ink sm:text-6xl lg:text-[4.25rem]">
                 <MaskedHeading text="Decide on fabric" delay={0.05} />
                 <span className="block text-muted italic">
                   <MaskedHeading text="in one place." delay={0.28} />

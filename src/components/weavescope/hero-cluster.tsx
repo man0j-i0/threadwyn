@@ -22,8 +22,8 @@ const LAYOUT = [
   "left-0 top-6 w-56 rotate-[-6deg]",
   "left-40 top-0 w-64 rotate-[3deg] z-20",
   "right-0 top-40 w-52 rotate-[7deg] z-10",
-  "left-4 top-64 w-60 rotate-[2deg] z-30",
-  "right-6 bottom-0 w-48 rotate-[-4deg] z-20",
+  "left-4 top-62 w-60 rotate-[2deg] z-30",
+  "right-2 top-72 w-52 rotate-[-4deg] z-20",
 ];
 
 /**
