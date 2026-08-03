@@ -17,7 +17,8 @@ export const metadata: Metadata = {
   description: "The verified Indian mills, handloom collectives and stockists supplying Threadwyn.",
 };
 
-export const revalidate = 120;
+// Dynamic, not ISR — see the note in src/app/page.tsx. SiteHeader's session
+// read makes any `revalidate` here inert.
 
 export default async function SuppliersPage() {
   const suppliers = await db.supplierProfile.findMany({

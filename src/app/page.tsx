@@ -27,7 +27,12 @@ import { AssistantDock } from "@/components/ai/assistant-dock";
 import { HeroCluster, type HeroSwatch } from "@/components/weavescope/hero-cluster";
 import type { WeaveKey } from "@/lib/weave";
 
-export const revalidate = 60;
+// No `revalidate` here, deliberately. SiteHeader reads the session cookie to
+// show who is signed in, which opts every route containing it into dynamic
+// rendering — an ISR directive on this page would be silently inert, which is
+// worse than absent because it reads like caching is happening. Making the
+// landing page cacheable means moving the auth-dependent chrome out of the
+// server tree, not adding a number here.
 
 const productSelect = {
   id: true,
@@ -50,8 +55,22 @@ const productSelect = {
   images: { select: { url: true, alt: true }, orderBy: { position: "asc" }, take: 1 },
 } as const;
 
+// The hero cascade is drawn from real catalogue rows, not decoration — each
+// card opens that fabric's loom. Picked for weave and colour-temperature
+// spread so the renderer's range reads at a glance.
+const HERO_PICKS = [
+  "12oz-stretch-denim-ahmedabad-denim",
+  "pure-european-flax-165-erode-linen",
+  "mulberry-charmeuse-16mm-surat-silk-house",
+  "wool-herringbone-280-bhiwandi-loomworks",
+  "combed-single-jersey-180-ludhiana-knit-mills",
+];
+
 export default async function LandingPage() {
-  const [featured, categories, stats, mills] = await Promise.all([
+  // One batch, not two. These queries have no dependency on each other, and the
+  // database is a region away from the function — a second sequential await
+  // costs another full round-trip for nothing.
+  const [featured, categories, stats, mills, heroRows] = await Promise.all([
     db.product.findMany({
       where: { status: "ACTIVE", featured: true },
       select: productSelect,
@@ -81,42 +100,30 @@ export default async function LandingPage() {
       select: { businessName: true, city: true, slug: true, yearEstablished: true },
       take: 8,
     }),
+    db.product.findMany({
+      where: { slug: { in: HERO_PICKS } },
+      select: {
+        id: true,
+        slug: true,
+        name: true,
+        weave: true,
+        gsm: true,
+        composition: true,
+        colorways: { select: { hex: true }, orderBy: { position: "asc" }, take: 1 },
+      },
+    }),
   ]);
 
   const [productCount, millCount, stockAgg, leadAgg] = stats;
   const products = serialize(featured) as unknown as ProductCardData[];
 
-  // The hero cascade is drawn from real catalogue rows, not decoration — each
-  // card opens that fabric's loom. Picked for weave and colour-temperature
-  // spread so the renderer's range reads at a glance.
-  const heroPicks = [
-    "12oz-stretch-denim-ahmedabad-denim",
-    "pure-european-flax-165-erode-linen",
-    "mulberry-charmeuse-16mm-surat-silk-house",
-    "wool-herringbone-280-bhiwandi-loomworks",
-    "combed-single-jersey-180-ludhiana-knit-mills",
-  ];
-
-  const heroRows = await db.product.findMany({
-    where: { slug: { in: heroPicks } },
-    select: {
-      id: true,
-      slug: true,
-      name: true,
-      weave: true,
-      gsm: true,
-      composition: true,
-      colorways: { select: { hex: true }, orderBy: { position: "asc" }, take: 1 },
-    },
-  });
-
   // Preserve the curated order, and fall back to featured stock if a seed slug
   // ever drifts — the hero must never render half-empty.
   const bySlug = new Map(heroRows.map((r) => [r.slug, r]));
-  const heroSwatches = heroPicks
+  const heroSwatches = HERO_PICKS
     .map((s) => bySlug.get(s))
     .filter((r): r is NonNullable<typeof r> => Boolean(r))
-    .concat(heroRows.filter((r) => !heroPicks.includes(r.slug)))
+    .concat(heroRows.filter((r) => !HERO_PICKS.includes(r.slug)))
     .slice(0, 5);
 
   return (
