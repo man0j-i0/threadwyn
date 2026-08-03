@@ -16,7 +16,8 @@
     "typecheck": "tsc --noEmit",
     "postinstall": "prisma generate",
     "db:deploy": "prisma migrate deploy",
-    "ai:check": "tsx scripts/ai-check.ts"
+    "ai:check": "tsx scripts/ai-check.ts",
+    "build:check": "cross-env NEXT_DIST_DIR=.next-verify next build"
   },
   "dependencies": {
     "@phosphor-icons/react": "^2.1.10",
@@ -45,6 +46,7 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "@types/three": "^0.185.3",
+    "cross-env": "^10.1.0",
     "dotenv": "^17.4.2",
     "eslint": "^9",
     "eslint-config-next": "16.2.12",
