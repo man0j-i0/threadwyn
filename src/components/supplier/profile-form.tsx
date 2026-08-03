@@ -6,7 +6,7 @@ import { Check } from "@phosphor-icons/react";
 
 import { supplierProfileSchema, type SupplierProfileInput } from "@/lib/validation/schemas";
 import { Button } from "@/components/ui/button";
-import { Field, Input, Select, Textarea, ChipGroup, checkboxClass } from "@/components/ui/field";
+import { Field, Input, Select, Textarea, ChipGroup, CheckboxControl } from "@/components/ui/field";
 import { useToast } from "@/components/ui/toast";
 
 const BUSINESS_TYPES = [
@@ -325,8 +325,7 @@ export function SupplierProfileForm({
             return (
               <li key={day.key} className="flex flex-wrap items-center gap-3">
                 <label className="flex min-h-9 w-32 cursor-pointer items-center gap-2.5">
-                  <input
-                    type="checkbox"
+                  <CheckboxControl
                     checked={open}
                     onChange={(e) =>
                       setHours((prev) => ({
@@ -334,7 +333,6 @@ export function SupplierProfileForm({
                         [day.key]: e.target.checked ? { open: "09:00", close: "18:00" } : null,
                       }))
                     }
-                    className={checkboxClass}
                   />
                   <span className="text-[13px] text-ink">{day.label}</span>
                 </label>

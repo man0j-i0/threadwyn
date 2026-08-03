@@ -10,7 +10,7 @@ import { WEAVE_LABELS, WEAVE_NOTES, type WeaveKey } from "@/lib/weave";
 import { productSchema, type ProductInput } from "@/lib/validation/schemas";
 import { FabricSwatch } from "@/components/product/fabric-swatch";
 import { Button } from "@/components/ui/button";
-import { Field, Input, Select, Textarea, ChipGroup, checkboxClass } from "@/components/ui/field";
+import { Field, Input, Select, Textarea, ChipGroup, CheckboxControl } from "@/components/ui/field";
 import { useToast } from "@/components/ui/toast";
 
 const FIBRES = ["cotton", "linen", "silk", "wool", "polyester", "viscose", "elastane", "nylon", "cupro", "zari"];
@@ -694,11 +694,10 @@ export function ProductForm({
           </Field>
 
           <label className="mt-4 flex cursor-pointer items-start gap-3">
-            <input
-              type="checkbox"
+            <CheckboxControl
+              className="mt-0.5"
               checked={form.featured}
               onChange={(e) => set("featured", e.target.checked)}
-              className={cn("mt-0.5", checkboxClass)}
             />
             <span>
               <span className="block text-[13px] text-ink">Feature this fabric</span>

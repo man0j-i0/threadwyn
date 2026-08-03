@@ -72,6 +72,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html
       lang="en"
       suppressHydrationWarning
+      // We set `scroll-behavior: smooth` globally for in-page anchors. Next
+      // needs this attribute to know that is deliberate, so it can suppress the
+      // smoothing during route transitions — otherwise restoring scroll on a
+      // back navigation animates instead of landing instantly.
+      data-scroll-behavior="smooth"
       className={`${fraunces.variable} ${geistSans.variable} ${geistMono.variable} h-full`}
     >
       <head>

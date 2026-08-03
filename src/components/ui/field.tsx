@@ -19,18 +19,54 @@ const control = cn(
 const controlSizing = "min-h-11 px-3.5 py-2.5 text-sm";
 
 /**
- * Shared checkbox styling. Lives here as a JS string rather than being inlined
- * into each `className` attribute — the embedded SVG tick needs escaped quotes,
- * which a JSX attribute string cannot carry.
+ * Checkbox.
+ *
+ * The tick is a real SVG sibling, not a `background-image` arbitrary value.
+ * The previous version encoded an inline SVG into a Tailwind class, and that
+ * data URI contained literal spaces (`viewBox='0 0 16 16'`). Tailwind cannot
+ * parse a space inside an arbitrary value, so the class was silently never
+ * emitted and no checkbox anywhere in the app ever looked checked — the state
+ * was correct, only invisible. Real geometry cannot fail that way.
  */
-export const checkboxClass = cn(
-  "size-4 shrink-0 cursor-pointer appearance-none rounded-[4px] border border-line-strong bg-surface",
-  "transition-[background-color,border-color] duration-200",
-  "checked:border-brand checked:bg-brand",
-  "checked:bg-[url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M3.5 8.5l3 3 6-6' stroke='white' stroke-width='2.2' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E\")]",
-  "checked:bg-center checked:bg-no-repeat",
-  "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring",
-);
+export function CheckboxControl({
+  className,
+  ...props
+}: React.InputHTMLAttributes<HTMLInputElement>) {
+  return (
+    <span className={cn("relative inline-grid shrink-0 place-items-center", className)}>
+      <input
+        type="checkbox"
+        className={cn(
+          "peer size-4 cursor-pointer appearance-none rounded-[4px]",
+          "border border-line-strong bg-surface",
+          "transition-[background-color,border-color] duration-200",
+          "checked:border-brand checked:bg-brand",
+          "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring",
+          "disabled:cursor-not-allowed disabled:opacity-50",
+        )}
+        {...props}
+      />
+      <svg
+        aria-hidden
+        viewBox="0 0 16 16"
+        fill="none"
+        className={cn(
+          "pointer-events-none absolute size-3 scale-75 opacity-0",
+          "transition-[opacity,transform] duration-200 ease-[var(--ease-spring)]",
+          "peer-checked:scale-100 peer-checked:opacity-100",
+        )}
+      >
+        <path
+          d="M3.5 8.5l3 3 6-6"
+          stroke="#fff"
+          strokeWidth="2.4"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      </svg>
+    </span>
+  );
+}
 
 const controlState = (invalid?: boolean) =>
   invalid
@@ -202,18 +238,7 @@ export function Checkbox({
         className,
       )}
     >
-      <input
-        id={id}
-        type="checkbox"
-        className={cn(
-          "mt-0.5 size-4.5 shrink-0 cursor-pointer appearance-none rounded-[5px] border border-line-strong bg-surface",
-          "transition-[background-color,border-color] duration-200",
-          "checked:border-brand checked:bg-brand",
-          "checked:bg-[url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none'%3E%3Cpath d='M3.5 8.5l3 3 6-6' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E\")] checked:bg-center checked:bg-no-repeat",
-          "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring",
-        )}
-        {...props}
-      />
+      <CheckboxControl id={id} className="mt-0.5" {...props} />
       <span className="min-w-0">
         <span className="block text-[13px] leading-snug font-medium text-ink">{label}</span>
         {description ? (

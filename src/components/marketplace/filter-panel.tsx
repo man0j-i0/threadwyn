@@ -6,6 +6,7 @@ import { CaretDown, CheckCircle, X } from "@phosphor-icons/react";
 
 import { cn, formatMoney, titleCase } from "@/lib/utils";
 import { Spinner } from "@/components/ui/spinner";
+import { CheckboxControl } from "@/components/ui/field";
 
 export type Facets = {
   categories: { value: string; label: string; count: number; accentHex: string }[];
@@ -82,6 +83,27 @@ export function FilterPanel({ facets, onApplied }: { facets: Facets; onApplied?:
     [commit],
   );
 
+  /**
+   * A range preset writes a min and a max together.
+   *
+   * Calling setSingle twice in a row looked fine but silently dropped the first
+   * write: both calls run in the same tick, so the second still reads the draft
+   * from the render that is being replaced and overwrites what the first just
+   * set. Only the last key survived — which is why "Under ₹300" (max only)
+   * appeared to work and every actual range did not.
+   */
+  const setRange = useCallback(
+    (minKey: string, maxKey: string, min: number | null, max: number | null) => {
+      commit((params) => {
+        if (min == null) params.delete(minKey);
+        else params.set(minKey, String(min));
+        if (max == null) params.delete(maxKey);
+        else params.set(maxKey, String(max));
+      });
+    },
+    [commit],
+  );
+
   const isOn = (key: string, value: string) =>
     (view.get(key) ?? "").split(",").filter(Boolean).includes(value);
 
@@ -130,6 +152,7 @@ export function FilterPanel({ facets, onApplied }: { facets: Facets; onApplied?:
           unit="₹"
           searchParams={view}
           onCommit={setSingle}
+          onRange={setRange}
           presets={[
             { label: "Under ₹300", min: null, max: 300 },
             { label: "₹300–₹600", min: 300, max: 600 },
@@ -147,6 +170,7 @@ export function FilterPanel({ facets, onApplied }: { facets: Facets; onApplied?:
           unit=""
           searchParams={view}
           onCommit={setSingle}
+          onRange={setRange}
           presets={[
             { label: "Light · ≤160", min: null, max: 160 },
             { label: "Mid · 160–280", min: 160, max: 280 },
@@ -303,17 +327,7 @@ function FacetRow({
         "transition-colors duration-200 hover:bg-sunken",
       )}
     >
-      <input
-        type="checkbox"
-        checked={checked}
-        onChange={onChange}
-        className={cn(
-          "size-4 shrink-0 cursor-pointer appearance-none rounded-[4px] border border-line-strong bg-surface",
-          "transition-colors duration-200 checked:border-brand checked:bg-brand",
-          "checked:bg-[url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M3.5 8.5l3 3 6-6' stroke='white' stroke-width='2.2' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E\")] checked:bg-center checked:bg-no-repeat",
-          "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring",
-        )}
-      />
+      <CheckboxControl checked={checked} onChange={onChange} />
       {swatch ? (
         <span aria-hidden className="size-2 shrink-0 rounded-full" style={{ backgroundColor: swatch }} />
       ) : null}
@@ -411,6 +425,7 @@ function RangeInputs({
   unit,
   searchParams,
   onCommit,
+  onRange,
   presets,
 }: {
   minKey: string;
@@ -419,6 +434,7 @@ function RangeInputs({
   unit: string;
   searchParams: URLSearchParams;
   onCommit: (key: string, value: string | null) => void;
+  onRange: (minKey: string, maxKey: string, min: number | null, max: number | null) => void;
   presets: { label: string; min: number | null; max: number | null }[];
 }) {
   const currentMin = searchParams.get(minKey);
@@ -434,10 +450,11 @@ function RangeInputs({
               key={p.label}
               type="button"
               aria-pressed={active}
-              onClick={() => {
-                onCommit(minKey, p.min == null ? null : String(p.min));
-                onCommit(maxKey, p.max == null ? null : String(p.max));
-              }}
+              // One commit, both bounds. Clicking an active preset clears it,
+              // so the control is a toggle rather than a one-way door.
+              onClick={() =>
+                active ? onRange(minKey, maxKey, null, null) : onRange(minKey, maxKey, p.min, p.max)
+              }
               className={cn(
                 "cursor-pointer rounded-full border px-2.5 py-1.5 text-[11.5px] transition-colors duration-200",
                 active
