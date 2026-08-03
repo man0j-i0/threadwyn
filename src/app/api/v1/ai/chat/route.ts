@@ -4,7 +4,7 @@ import { aiChatSchema } from "@/lib/validation/schemas";
 import { db } from "@/lib/db";
 import { readOrCreateAnonId, readSession } from "@/lib/auth/session";
 
-export const maxDuration = 45;
+export const maxDuration = 30;
 
 export async function POST(req: Request) {
   try {

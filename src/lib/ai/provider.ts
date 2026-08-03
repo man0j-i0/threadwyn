@@ -98,7 +98,13 @@ export async function complete(opts: {
   const provider = activeProvider();
   if (provider === "none") return null;
 
-  const { messages, tools, temperature = 0.2, maxTokens = 800, timeoutMs = 28_000 } = opts;
+  // The model must give up before the platform kills the function, otherwise
+  // the request dies outright instead of degrading to the rule engine. Vercel
+  // Hobby caps a function at 60s but defaults to 10s, so this is tunable:
+  // set AI_TIMEOUT_MS below your plan's ceiling and the fallback always wins
+  // the race.
+  const budget = Number(process.env.AI_TIMEOUT_MS) || 20_000;
+  const { messages, tools, temperature = 0.2, maxTokens = 800, timeoutMs = budget } = opts;
 
   const attempts =
     provider === "huggingface"
