@@ -56,7 +56,14 @@ export type ProductDetailData = {
   };
 };
 
-export function ProductDetail({ product }: { product: ProductDetailData }) {
+export function ProductDetail({
+  product,
+  canBuy = true,
+}: {
+  product: ProductDetailData;
+  /** False for supplier accounts — they browse, they just cannot order. */
+  canBuy?: boolean;
+}) {
   const router = useRouter();
   const { toast } = useToast();
 
@@ -66,7 +73,7 @@ export function ProductDetail({ product }: { product: ProductDetailData }) {
   const [added, setAdded] = useState(false);
 
   const available = colorway?.stockMetres ?? product.stockMetres;
-  const orderable = product.status === "ACTIVE" && available > 0;
+  const orderable = canBuy && product.status === "ACTIVE" && available > 0;
   const lineTotal = quantity * product.pricePerMetre;
   const discounted = product.compareAtPrice && product.compareAtPrice > product.pricePerMetre;
   const hero = product.images[0];
@@ -374,7 +381,7 @@ export function ProductDetail({ product }: { product: ProductDetailData }) {
             disabled={!orderable}
             icon={added ? <Check size={16} weight="bold" /> : <Handbag size={16} weight="light" />}
           >
-            {!orderable ? "Out of stock" : added ? "Added to cart" : "Add to cart"}
+            {!canBuy ? "Buyer accounts only" : !orderable ? "Out of stock" : added ? "Added to cart" : "Add to cart"}
           </Button>
 
           <div className="grid grid-cols-2 gap-2.5">
@@ -395,7 +402,12 @@ export function ProductDetail({ product }: { product: ProductDetailData }) {
           </div>
         </div>
 
-        {!orderable ? (
+        {!canBuy ? (
+          <p className="mt-4 rounded-[var(--radius-sm)] border border-line bg-canvas-veil px-3.5 py-3 text-[12.5px] leading-relaxed text-muted">
+            You&apos;re signed in as a supplier, so ordering is off — but everything else on this page is
+            exactly what a buyer sees, which is the point of looking.
+          </p>
+        ) : !orderable ? (
           <p className="mt-4 rounded-[var(--radius-sm)] border border-warn-line bg-warn-soft px-3.5 py-3 text-[12.5px] leading-relaxed text-warn">
             This cloth is between lots. {product.supplier.businessName} quotes {product.leadTimeDays} days to
             weave a fresh run — contact them directly to reserve capacity.

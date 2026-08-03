@@ -1,5 +1,6 @@
 import "server-only";
 
+import { cache } from "react";
 import { cookies } from "next/headers";
 import { SignJWT, jwtVerify } from "jose";
 
@@ -84,6 +85,15 @@ export async function readSession(): Promise<SessionPayload | null> {
   const store = await cookies();
   return verifySession(store.get(SESSION_COOKIE)?.value);
 }
+
+/**
+ * Same read, memoised for the lifetime of one request.
+ *
+ * A product grid renders 24 cards and each needs to know whether the viewer
+ * can buy. Without this that is 24 JWT verifications for one answer that
+ * cannot change mid-render.
+ */
+export const readSessionCached = cache(readSession);
 
 /**
  * A stable id for signed-out visitors so the AI assistant can keep conversation

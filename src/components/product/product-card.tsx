@@ -2,6 +2,7 @@ import Link from "next/link";
 import { CheckCircle } from "@phosphor-icons/react/dist/ssr";
 
 import { cn, formatMoney, formatMetres } from "@/lib/utils";
+import { readSessionCached } from "@/lib/auth/session";
 import type { WeaveKey } from "@/lib/weave";
 import { FabricSwatch } from "./fabric-swatch";
 import { StockPill } from "./stock-pill";
@@ -28,7 +29,7 @@ export type ProductCardData = {
   images: { url: string; alt: string }[];
 };
 
-export function ProductCard({
+export async function ProductCard({
   product,
   priority,
   className,
@@ -37,6 +38,13 @@ export function ProductCard({
   priority?: boolean;
   className?: string;
 }) {
+  // Suppliers can browse the marketplace — seeing how your cloth sits beside a
+  // competitor's is a real reason to be here. They just cannot buy, so they are
+  // not offered a control that could only ever fail. Signed-out visitors keep
+  // it: for them it is a prompt to sign in, not a dead end.
+  const session = await readSessionCached();
+  const canBuy = session?.role !== "SUPPLIER";
+
   const lead = product.colorways[0];
   const hero = product.images[0];
   const discounted = product.compareAtPrice && product.compareAtPrice > product.pricePerMetre;
@@ -154,15 +162,17 @@ export function ProductCard({
           </div>
 
           {/* Sits above the stretched link so it stays independently clickable. */}
-          <div className="relative z-10">
-            <QuickAdd
-              productId={product.id}
-              productName={product.name}
-              colorwayId={lead?.id ?? null}
-              moq={product.moqMetres}
-              disabled={product.status !== "ACTIVE" || product.stockMetres <= 0}
-            />
-          </div>
+          {canBuy ? (
+            <div className="relative z-10">
+              <QuickAdd
+                productId={product.id}
+                productName={product.name}
+                colorwayId={lead?.id ?? null}
+                moq={product.moqMetres}
+                disabled={product.status !== "ACTIVE" || product.stockMetres <= 0}
+              />
+            </div>
+          ) : null}
         </div>
       </div>
     </article>

@@ -9,6 +9,7 @@ import {
   incrementViewCount,
 } from "@/server/services/product-service";
 import { serialize } from "@/lib/serialize";
+import { readSessionCached } from "@/lib/auth/session";
 import { formatMetres, formatNumber } from "@/lib/utils";
 import { ProductDetail, type ProductDetailData } from "@/components/product/product-detail";
 import { ProductCard, type ProductCardData } from "@/components/product/product-card";
@@ -40,7 +41,7 @@ export default async function ProductPage({ params }: PageProps) {
   // Deliberately not awaited — a view counter must never delay a page render.
   void incrementViewCount(product.id);
 
-  const similar = await getSimilarProducts(product.id, 4);
+  const [similar, session] = await Promise.all([getSimilarProducts(product.id, 4), readSessionCached()]);
   const detail = serialize(product) as unknown as ProductDetailData;
   const similarCards = serialize(similar) as unknown as ProductCardData[];
 
@@ -75,7 +76,7 @@ export default async function ProductPage({ params }: PageProps) {
           </ol>
         </nav>
 
-        <ProductDetail product={detail} />
+        <ProductDetail product={detail} canBuy={session?.role !== "SUPPLIER"} />
 
         {/* ---------------------------------------------------- description */}
         <div className="mt-16 grid gap-10 lg:grid-cols-[minmax(0,1fr)_minmax(0,26rem)] lg:gap-14">
