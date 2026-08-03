@@ -207,7 +207,7 @@ export function ProductDetail({ product }: { product: ProductDetailData }) {
         </h1>
 
         <Link
-          href={`/suppliers/${product.supplier.slug}`}
+          href={`/marketplace?supplier=${product.supplier.slug}`}
           className="mt-3 inline-flex items-center gap-2 text-[13.5px] text-muted transition-colors hover:text-ink"
         >
           <span className="font-medium">{product.supplier.businessName}</span>
