@@ -4,6 +4,7 @@ import { useState } from "react";
 import { ArrowLeft, Sparkle } from "@phosphor-icons/react";
 
 import type { SupplierProfileInput } from "@/lib/validation/schemas";
+import { modeLabel, type AiMode } from "@/lib/ai/mode-label";
 import { SupplierProfileForm } from "@/components/supplier/profile-form";
 import { WeaverMark } from "@/components/brand/weaver-mark";
 import { OnboardingChat, type ScriptStep } from "./onboarding-chat";
@@ -39,7 +40,7 @@ export function SupplierOnboarding({
   defaultEmail: string;
 }) {
   const [stage, setStage] = useState<"chat" | "review">("chat");
-  const [source, setSource] = useState<{ mode: "model" | "rules"; model: string } | null>(null);
+  const [source, setSource] = useState<{ mode: AiMode; model: string } | null>(null);
   const [draft, setDraft] = useState<Partial<SupplierProfileInput>>({
     businessName: defaultName,
     contactEmail: defaultEmail,
@@ -90,7 +91,7 @@ export function SupplierOnboarding({
               those are the fields buyers actually use, and the ones extraction is most likely to get wrong.
             </p>
             <p className="mt-1.5 font-mono text-[10.5px] text-subtle">
-              {source.mode === "model" ? source.model : "rule-based extraction · no model configured"}
+              {modeLabel(source.mode, source.model, "rule-based extraction")}
             </p>
           </div>
         </div>

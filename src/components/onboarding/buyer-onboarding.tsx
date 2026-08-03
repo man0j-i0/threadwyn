@@ -5,6 +5,7 @@ import { useState } from "react";
 import { ArrowLeft, Check, Sparkle } from "@phosphor-icons/react";
 
 import { buyerProfileSchema, type BuyerProfileInput } from "@/lib/validation/schemas";
+import { modeLabel, type AiMode } from "@/lib/ai/mode-label";
 import { Button } from "@/components/ui/button";
 import { Field, Input, Select, Textarea, ChipGroup } from "@/components/ui/field";
 import { useToast } from "@/components/ui/toast";
@@ -71,7 +72,7 @@ export function BuyerOnboarding({
   const { toast } = useToast();
 
   const [stage, setStage] = useState<"chat" | "review">(mode === "settings" ? "review" : "chat");
-  const [source, setSource] = useState<{ mode: "model" | "rules"; model: string } | null>(null);
+  const [source, setSource] = useState<{ mode: AiMode; model: string } | null>(null);
   const [busy, setBusy] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [formError, setFormError] = useState<string | null>(null);
@@ -209,7 +210,7 @@ export function BuyerOnboarding({
               anything highlighted was inferred from what you said, so it&apos;s the most likely to be wrong.
             </p>
             <p className="mt-1.5 font-mono text-[10.5px] text-subtle">
-              {source.mode === "model" ? source.model : "rule-based extraction · no model configured"}
+              {modeLabel(source.mode, source.model, "rule-based extraction")}
             </p>
           </div>
         </div>

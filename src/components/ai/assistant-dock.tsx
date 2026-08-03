@@ -14,6 +14,7 @@ import {
 } from "@phosphor-icons/react";
 
 import { cn, formatMetres, formatMoney } from "@/lib/utils";
+import { modeLabel } from "@/lib/ai/mode-label";
 import { FabricSwatch } from "@/components/product/fabric-swatch";
 import { WeaverMark } from "@/components/brand/weaver-mark";
 import { useSpeech, useVoice } from "./use-voice";
@@ -546,7 +547,7 @@ function TurnBubble({
 
       {turn.model ? (
         <p className="font-mono text-[10px] text-subtle">
-          {turn.mode === "model" ? turn.model : "rule-based engine · no model configured"}
+          {modeLabel(turn.mode ?? "rules", turn.model ?? "rule-based engine")}
         </p>
       ) : null}
     </div>

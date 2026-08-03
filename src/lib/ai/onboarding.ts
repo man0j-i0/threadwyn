@@ -66,36 +66,90 @@ export const SUPPLIER_SCRIPT = [
   },
 ] as const;
 
+/**
+ * Field builders that survive a small model's approximations.
+ *
+ * A 7B model asked for JSON gets the *shape* right and the *types* casually
+ * wrong: `"linen, silk"` where an array was asked for, `"800"` where a number
+ * was. Validating the whole object in one pass turns either of those into a
+ * total loss — the business name, city and budget are discarded along with the
+ * offending field, and the user is handed a blank form after answering four
+ * questions. That is a far worse failure than a missing tag.
+ *
+ * So: coerce what is obviously coercible, and `.catch(undefined)` each field so
+ * a value we cannot rescue drops itself rather than the entire draft. Every
+ * field is reviewed by the user before anything is saved, and the rule pass
+ * still overwrites anything it matched, so leniency here costs no correctness.
+ */
+const text = () => z.string().trim().min(1).optional().catch(undefined);
+
+/** Accepts `["a","b"]`, `"a, b"`, `"a / b"` or a bare `"a"`. */
+const list = () =>
+  z
+    .preprocess(
+      (v) =>
+        typeof v === "string"
+          ? v.split(/[,;/|]/).map((s) => s.trim()).filter(Boolean)
+          : v,
+      z.array(z.string().trim().min(1)),
+    )
+    .optional()
+    .catch(undefined);
+
+/** Accepts `800`, `"800"`, `"₹800"`, `"800/m"`. */
+const num = () =>
+  z
+    .preprocess((v) => {
+      if (typeof v !== "string") return v;
+      const digits = v.replace(/[^\d.]/g, "");
+      return digits ? Number(digits) : v;
+    }, z.number().finite())
+    .optional()
+    .catch(undefined);
+
+const enumOf = <T extends readonly [string, ...string[]]>(values: T) =>
+  z
+    .preprocess(
+      (v) => (typeof v === "string" ? v.trim().toUpperCase().replace(/\s+/g, "_") : v),
+      z.enum(values.map((s) => s.toUpperCase()) as unknown as T),
+    )
+    .optional()
+    .catch(undefined);
+
 const buyerExtraction = z.object({
-  businessName: z.string().optional(),
-  businessType: z.enum(["BRAND", "MANUFACTURER", "BOUTIQUE", "EXPORTER", "RETAILER", "OTHER"]).optional(),
-  industry: z.string().optional(),
-  city: z.string().optional(),
-  categoryInterest: z.array(z.string()).optional(),
-  preferredFabrics: z.array(z.string()).optional(),
-  typicalOrderQty: z.enum(["under-500", "500-2000", "2000-10000", "10000-plus"]).optional(),
-  budgetMin: z.number().optional(),
-  budgetMax: z.number().optional(),
-  notes: z.string().optional(),
+  businessName: text(),
+  businessType: enumOf(["BRAND", "MANUFACTURER", "BOUTIQUE", "EXPORTER", "RETAILER", "OTHER"]),
+  industry: text(),
+  city: text(),
+  categoryInterest: list(),
+  preferredFabrics: list(),
+  // Kept case-sensitive: these are lowercase slugs, not enum constants.
+  typicalOrderQty: z
+    .enum(["under-500", "500-2000", "2000-10000", "10000-plus"])
+    .optional()
+    .catch(undefined),
+  budgetMin: num(),
+  budgetMax: num(),
+  notes: text(),
 });
 
 const supplierExtraction = z.object({
-  businessName: z.string().optional(),
-  businessType: z.enum(["MILL", "HANDLOOM", "WHOLESALER", "CONVERTER", "AGENT"]).optional(),
-  tagline: z.string().optional(),
-  description: z.string().optional(),
-  contactEmail: z.string().optional(),
-  contactPhone: z.string().optional(),
-  addressLine1: z.string().optional(),
-  city: z.string().optional(),
-  state: z.string().optional(),
-  postalCode: z.string().optional(),
-  categories: z.array(z.string()).optional(),
-  fabricTypes: z.array(z.string()).optional(),
-  certifications: z.array(z.string()).optional(),
-  moqMetres: z.number().optional(),
-  leadTimeDays: z.number().optional(),
-  yearEstablished: z.number().optional(),
+  businessName: text(),
+  businessType: enumOf(["MILL", "HANDLOOM", "WHOLESALER", "CONVERTER", "AGENT"]),
+  tagline: text(),
+  description: text(),
+  contactEmail: text(),
+  contactPhone: text(),
+  addressLine1: text(),
+  city: text(),
+  state: text(),
+  postalCode: text(),
+  categories: list(),
+  fabricTypes: list(),
+  certifications: list(),
+  moqMetres: num(),
+  leadTimeDays: num(),
+  yearEstablished: num(),
 });
 
 export type BuyerDraft = z.infer<typeof buyerExtraction>;
@@ -170,8 +224,12 @@ export async function extractProfile(
   const schema = role === "BUYER" ? buyerExtraction : supplierExtraction;
   const parsed = raw ? schema.safeParse(raw) : null;
 
+  // A model is configured but gave us nothing we could use — timed out, errored,
+  // or replied with prose instead of JSON. Report that distinctly: telling the
+  // operator "no model configured" when a model *is* configured sends them to
+  // check environment variables that were never the problem.
   if (!parsed?.success) {
-    return { draft: rules, mode: "rules" as const, model: providerLabel() };
+    return { draft: rules, mode: "fallback" as const, model: providerLabel() };
   }
 
   // The model fills gaps; the rule pass wins where both found something, since
@@ -196,9 +254,41 @@ function stripEmpty<T extends Record<string, unknown>>(obj: T): Partial<T> {
 
 /* ------------------------------------------------------------ rules pass */
 
+/**
+ * Words that flip the meaning of whatever follows them.
+ *
+ * "We avoid polyester" and "we buy polyester" both contain "polyester", and a
+ * plain substring match records the first as a preference. That is not a
+ * cosmetic error — it writes the opposite of what the buyer said into their
+ * sourcing profile, which then drives their recommendations.
+ *
+ * The window is deliberately short. Scanning the whole sentence would let a
+ * "no" at the start suppress a genuine preference at the end ("no rush, we buy
+ * a lot of linen"); six words is enough to catch "avoid polyester" and "nothing
+ * synthetic" without reaching that far.
+ */
+const NEGATORS = /\b(no|not|never|avoid|avoids|avoiding|except|without|excluding|dislike|hate|don'?t|doesn'?t|steer clear of)\b/;
+const NEGATION_WINDOW = 6;
+
+function isNegated(lower: string, at: number): boolean {
+  const before = lower.slice(0, at).split(/\s+/).slice(-NEGATION_WINDOW).join(" ");
+  return NEGATORS.test(before);
+}
+
 function matchList(text: string, options: string[]): string[] {
   const lower = text.toLowerCase();
-  return options.filter((o) => lower.includes(o.toLowerCase().replace(/-/g, " ")) || lower.includes(o.toLowerCase()));
+  return options.filter((o) => {
+    // Slugs are matched both as written and with hyphens relaxed to spaces, so
+    // "silk-satin" is found in "silk satin".
+    for (const needle of [o.toLowerCase(), o.toLowerCase().replace(/-/g, " ")]) {
+      let at = lower.indexOf(needle);
+      while (at !== -1) {
+        if (!isNegated(lower, at)) return true;
+        at = lower.indexOf(needle, at + needle.length);
+      }
+    }
+    return false;
+  });
 }
 
 function firstNumber(text: string, pattern: RegExp): number | undefined {

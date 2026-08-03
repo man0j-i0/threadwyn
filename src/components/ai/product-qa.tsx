@@ -4,6 +4,7 @@ import { useState } from "react";
 import { ArrowUp, Microphone, Sparkle } from "@phosphor-icons/react";
 
 import { cn } from "@/lib/utils";
+import { modeLabel } from "@/lib/ai/mode-label";
 import { WeaverMark } from "@/components/brand/weaver-mark";
 import { useVoice } from "./use-voice";
 
@@ -105,7 +106,7 @@ export function ProductQA({ slug, name, suggestions }: { slug: string; name: str
                       <p className="text-[13.5px] leading-relaxed text-muted">{e.answer}</p>
                       {e.model ? (
                         <p className="font-mono text-[10px] text-subtle">
-                          {e.mode === "model" ? e.model : "rule-based engine · no model configured"}
+                          {modeLabel(e.mode ?? "rules", e.model ?? "rule-based engine")}
                         </p>
                       ) : null}
                     </>
