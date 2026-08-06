@@ -1,4 +1,3 @@
-import Link from "next/link";
 import {
   ArrowRight,
   ArrowsLeftRight,
@@ -24,7 +23,8 @@ import { ButtonLink } from "@/components/ui/button";
 import { SectionHeading } from "@/components/ui/card";
 import { Reveal, Stagger, StaggerItem, MaskedHeading } from "@/components/motion/reveal";
 import { AssistantDock } from "@/components/ai/assistant-dock";
-import { HeroCluster, type HeroSwatch } from "@/components/weavescope/hero-cluster";
+import { CategoryCard } from "@/components/home/category-card";
+import { FabricWheel, type WheelSwatch } from "@/components/home/fabric-wheel";
 import type { WeaveKey } from "@/lib/weave";
 
 // No `revalidate` here, deliberately. SiteHeader reads the session cookie to
@@ -139,7 +139,7 @@ export default async function LandingPage() {
             <div className="absolute -top-24 right-0 size-[34rem] rounded-full bg-[radial-gradient(circle,var(--accent-soft),transparent_68%)] opacity-60" />
           </div>
 
-          <div className="mx-auto grid max-w-[1400px] items-center gap-14 px-4 pt-14 pb-20 sm:px-6 lg:grid-cols-[1.05fr_0.95fr] lg:gap-8 lg:px-10 lg:pt-24 lg:pb-28">
+          <div className="mx-auto grid max-w-[1400px] items-center gap-14 px-4 pt-14 pb-20 sm:px-6 lg:grid-cols-[0.9fr_1.1fr] lg:gap-6 lg:px-10 lg:pt-24 lg:pb-28">
             <div className="max-w-2xl">
               <h1 className="font-display text-[2.6rem] leading-[1.02] font-medium tracking-[-0.025em] text-ink sm:text-6xl lg:text-[4.25rem]">
                 <MaskedHeading text="Decide on fabric" delay={0.05} />
@@ -173,11 +173,13 @@ export default async function LandingPage() {
               </Reveal>
             </div>
 
-            {/* The one place WeaveScope is offered. One shared cursor for the
-                whole cluster; the card you click picks the fabric. */}
-            <Reveal delay={0.3} y={28} className="relative hidden lg:block">
-              <HeroCluster
-                swatches={heroSwatches.map<HeroSwatch>((s) => ({
+            {/* The one place WeaveScope is offered. A dial rather than a
+                stack: every fabric is visible, the selected one is lifted out
+                at full size, and it turns by scroll, by arrow button or by
+                clicking any card on the ring. */}
+            <Reveal delay={0.3} y={28} className="relative hidden lg:-mr-10 lg:block xl:-mr-16">
+              <FabricWheel
+                swatches={heroSwatches.map<WheelSwatch>((s) => ({
                   id: s.id,
                   slug: s.slug,
                   name: s.name,
@@ -231,26 +233,15 @@ export default async function LandingPage() {
           <Stagger className="mt-12 grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
             {categories.map((c) => (
               <StaggerItem key={c.slug}>
-                <Link
-                  href={`/marketplace?category=${c.slug}`}
-                  className="group relative flex h-full flex-col overflow-hidden rounded-[var(--radius-lg)] border border-line bg-surface p-5 transition-[border-color,box-shadow,transform] duration-500 ease-[var(--ease-out-expo)] hover:-translate-y-0.5 hover:border-line-strong hover:shadow-[var(--shadow-md)]"
-                >
-                  <span
-                    aria-hidden
-                    className="absolute -top-10 -right-10 size-28 rounded-full opacity-[0.14] blur-2xl transition-opacity duration-500 group-hover:opacity-25"
-                    style={{ backgroundColor: c.accentHex }}
-                  />
-                  <span
-                    aria-hidden
-                    className="size-2.5 rounded-full"
-                    style={{ backgroundColor: c.accentHex }}
-                  />
-                  <h3 className="mt-4 text-[15px] font-medium text-ink">{c.name}</h3>
-                  <p className="mt-1.5 flex-1 text-[12.5px] leading-relaxed text-subtle">{c.blurb}</p>
-                  <p className="mt-4 font-mono text-[11px] text-subtle tnum">
-                    {c._count.products} {c._count.products === 1 ? "fabric" : "fabrics"}
-                  </p>
-                </Link>
+                <CategoryCard
+                  category={{
+                    slug: c.slug,
+                    name: c.name,
+                    blurb: c.blurb,
+                    accentHex: c.accentHex,
+                    count: c._count.products,
+                  }}
+                />
               </StaggerItem>
             ))}
           </Stagger>
