@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useRef, useState } from "react";
+import { useRef, useState, useTransition } from "react";
 import { ArrowRight, MagnifyingGlass, Sparkle } from "@phosphor-icons/react";
 
 import { cn } from "@/lib/utils";
@@ -25,7 +25,12 @@ export function HeroSearch({ autoFocus = false }: { autoFocus?: boolean }) {
   const router = useRouter();
   const inputRef = useRef<HTMLInputElement>(null);
   const [value, setValue] = useState("");
-  const [busy, setBusy] = useState(false);
+
+  // `useTransition` rather than a manual `busy` flag. The flag was set before
+  // `router.push` and never cleared, so a slow route, a failed navigation or a
+  // press of the back button left the button spinning and disabled forever.
+  // React owns the pending window here and ends it when navigation settles.
+  const [busy, startNavigation] = useTransition();
 
   function submit(query: string) {
     const q = query.trim();
@@ -33,11 +38,12 @@ export function HeroSearch({ autoFocus = false }: { autoFocus?: boolean }) {
       inputRef.current?.focus();
       return;
     }
-    setBusy(true);
     // Anything that reads like a sentence goes through natural-language
     // parsing; one or two words is just a keyword search.
     const conversational = q.split(/\s+/).length >= 4;
-    router.push(`/marketplace?${conversational ? "ask" : "q"}=${encodeURIComponent(q)}`);
+    startNavigation(() => {
+      router.push(`/marketplace?${conversational ? "ask" : "q"}=${encodeURIComponent(q)}`);
+    });
   }
 
   return (
@@ -105,8 +111,12 @@ export function HeroSearch({ autoFocus = false }: { autoFocus?: boolean }) {
             key={s}
             type="button"
             onClick={() => {
+              // Fills the field and hands back focus; it does not search.
+              // These read as examples, and someone clicking one to see what it
+              // looks like should not be thrown to a results page before they
+              // can edit it.
               setValue(s);
-              submit(s);
+              inputRef.current?.focus();
             }}
             className={cn(
               "cursor-pointer rounded-full border border-line bg-surface/70 px-3 py-1.5 text-[12px] text-muted",

@@ -71,10 +71,14 @@ export function FabricSwatch({
 
         {/* Fibre haze — the microscopic fuzz that separates cloth from plastic. */}
         <filter id={`${uid}-fibre`} x="0" y="0" width="100%" height="100%">
+          {/* Two octaves, not three. Each octave is another full-resolution
+              noise pass, and this filter is the most expensive thing the swatch
+              paints. A grid of 24 cards renders 24 of them, where the third
+              octave adds detail below what a card-sized swatch can resolve. */}
           <feTurbulence
             type="fractalNoise"
             baseFrequency="0.9"
-            numOctaves="3"
+            numOctaves="2"
             seed={spec.seed % 1000}
             result="n"
           />

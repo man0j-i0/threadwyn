@@ -298,6 +298,7 @@ function Field({
   // follows this damped value instead of the raw one, which is the difference
   // between the camera stepping and the camera gliding.
   const eased = useRef(0);
+  const elapsed = useRef(0);
   const shot = useRef(new THREE.Vector3(0, 0.16, 4.9));
 
   const { gl } = useThree();
@@ -308,7 +309,13 @@ function Field({
   useFrame((state, delta) => {
     const camera = state.camera as THREE.PerspectiveCamera;
     const raw = THREE.MathUtils.clamp(progress.current ?? 0, 0, 1);
-    const t = state.clock.elapsedTime;
+    // Accumulated from `delta` rather than read off `state.clock`. three r185
+    // deprecates Clock in favour of Timer, and R3F still exposes the old one,
+    // so touching it logs a deprecation on every mount. We only ever needed a
+    // monotonically increasing seconds value for the breathing motions below,
+    // and `delta` already gives us that without the dependency.
+    elapsed.current += delta;
+    const t = elapsed.current;
 
     // Critically damped follow, frame-rate independent. 1 - e^(-k·dt) reaches
     // the target at the same speed whether the tab is running at 60 or 144.
@@ -461,6 +468,7 @@ export default function LoomScene({
   seed = "threadwyn",
   progress,
   quality = "high",
+  active = true,
 }: {
   weave?: WeaveKey;
   hex: string;
@@ -468,6 +476,12 @@ export default function LoomScene({
   seed?: string;
   progress: React.RefObject<number>;
   quality?: "high" | "low";
+  /**
+   * Whether the stage is actually on screen. Drives `frameloop`, so the
+   * renderer stops entirely when the scene is scrolled past instead of
+   * animating filaments nobody can see.
+   */
+  active?: boolean;
 }) {
   const fog = useMemo(() => paletteFrom(hex).fog, [hex]);
 
@@ -478,7 +492,7 @@ export default function LoomScene({
       // the fragment cost of this scene scales with pixels, not with geometry.
       dpr={quality === "high" ? [1, 1.6] : [1, 1.15]}
       camera={{ position: [0, 0.2, 4.8], fov: 40, near: 0.1, far: 40 }}
-      frameloop="always"
+      frameloop={active ? "always" : "never"}
     >
       {/* Three-point rig. The strong key from upper-left is what gives the
           tubes their cylindrical read; the cool fill keeps the shadow side from

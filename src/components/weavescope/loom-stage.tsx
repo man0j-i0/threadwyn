@@ -85,7 +85,9 @@ export function LoomStage({
   const progress = useRef(0);
 
   const [ready, setReady] = useState(false);
+  const [posterGone, setPosterGone] = useState(false);
   const [inView, setInView] = useState(false);
+  const [onScreen, setOnScreen] = useState(false);
   const [quality, setQuality] = useState<"high" | "low">("high");
   const [stageIndex, setStageIndex] = useState(0);
 
@@ -122,15 +124,35 @@ export function LoomStage({
     setStageIndex((prev) => (prev === next ? prev : next));
   });
 
-  // Only start the renderer once the stage is genuinely visible.
+  // Two signals, not one, because they answer different questions.
+  //
+  // `inView` decides when to *fetch and mount* the three.js chunk, and wants a
+  // generous margin so the scene is ready before it is needed.
+  //
+  // `onScreen` decides whether to *render frames*, and wants no margin at all.
+  // This wrapper is 560vh tall, so a 200px margin marks it visible while the
+  // visitor is still a whole screen away. Driving the render loop off that
+  // signal meant the GPU was drawing filaments nobody could see for an entire
+  // viewport of scrolling.
   useEffect(() => {
     const el = wrapRef.current;
     if (!el) return;
-    const io = new IntersectionObserver(([entry]) => setInView(Boolean(entry?.isIntersecting)), {
-      rootMargin: "200px",
-    });
-    io.observe(el);
-    return () => io.disconnect();
+
+    const mount = new IntersectionObserver(
+      ([entry]) => setInView(Boolean(entry?.isIntersecting)),
+      { rootMargin: "200px" },
+    );
+    const paint = new IntersectionObserver(
+      ([entry]) => setOnScreen(Boolean(entry?.isIntersecting)),
+      { rootMargin: "0px" },
+    );
+
+    mount.observe(el);
+    paint.observe(el);
+    return () => {
+      mount.disconnect();
+      paint.disconnect();
+    };
   }, []);
 
   // Drop shadows and antialiasing on machines that will not enjoy them.
@@ -149,6 +171,21 @@ export function LoomStage({
     const t = window.setTimeout(() => setReady(true), 450);
     return () => window.clearTimeout(t);
   }, [inView]);
+
+  // Then take the poster out of the tree entirely, once its fade has finished.
+  //
+  // It was previously left mounted at opacity 0 forever, and it is not a cheap
+  // thing to leave lying around: a viewport-sized `blur-2xl` over a FabricSwatch
+  // that is itself painting an feTurbulence filter and two blend modes. A
+  // transparent layer still gets composited, so every frame after this point
+  // was paying for a 40px blur of a filtered SVG that nobody could see. That is
+  // what made scrolling out of the stage and into the sections below it
+  // stutter.
+  useEffect(() => {
+    if (!ready) return;
+    const t = window.setTimeout(() => setPosterGone(true), 1100);
+    return () => window.clearTimeout(t);
+  }, [ready]);
 
   const stage = STAGES[stageIndex]!;
 
@@ -187,25 +224,28 @@ export function LoomStage({
     <div ref={wrapRef} className="relative h-[560vh]">
       <div className="sticky top-0 h-dvh overflow-hidden bg-[#14120f]">
         {/* Poster: the real swatch, blurred and dimmed. Holds the frame while
-            the 3D chunk loads so there is never an empty black box. */}
-        <div
-          className={cn(
-            "absolute inset-0 transition-opacity duration-1000 ease-[var(--ease-out-expo)]",
-            ready ? "opacity-0" : "opacity-100",
-          )}
-        >
-          <div className="size-full scale-110 opacity-40 blur-2xl">
-            <FabricSwatch weave={weave} hex={hex} gsm={gsm} seed={seed} alt="" drape={false} />
-          </div>
-          {mounted && inView ? (
-            <div className="absolute inset-0 grid place-items-center">
-              <div className="flex items-center gap-2.5 rounded-full bg-black/40 px-4 py-2.5 backdrop-blur-md">
-                <Spinner className="size-4 text-white/70" />
-                <span className="text-[12.5px] text-white/70">Warping the loom…</span>
-              </div>
+            the 3D chunk loads so there is never an empty black box, then leaves
+            the tree completely once the canvas has faded up. */}
+        {!posterGone ? (
+          <div
+            className={cn(
+              "absolute inset-0 transition-opacity duration-1000 ease-[var(--ease-out-expo)]",
+              ready ? "opacity-0" : "opacity-100",
+            )}
+          >
+            <div className="size-full scale-110 opacity-40 blur-2xl">
+              <FabricSwatch weave={weave} hex={hex} gsm={gsm} seed={seed} alt="" drape={false} />
             </div>
-          ) : null}
-        </div>
+            {mounted && inView ? (
+              <div className="absolute inset-0 grid place-items-center">
+                <div className="flex items-center gap-2.5 rounded-full bg-black/40 px-4 py-2.5 backdrop-blur-md">
+                  <Spinner className="size-4 text-white/70" />
+                  <span className="text-[12.5px] text-white/70">Warping the loom…</span>
+                </div>
+              </div>
+            ) : null}
+          </div>
+        ) : null}
 
         {mounted && inView ? (
           <motion.div
@@ -215,7 +255,15 @@ export function LoomStage({
               ready ? "opacity-100" : "opacity-0",
             )}
           >
-            <LoomScene weave={weave} hex={hex} gsm={gsm} seed={seed} progress={progress} quality={quality} />
+            <LoomScene
+              weave={weave}
+              hex={hex}
+              gsm={gsm}
+              seed={seed}
+              progress={progress}
+              quality={quality}
+              active={onScreen}
+            />
           </motion.div>
         ) : null}
 

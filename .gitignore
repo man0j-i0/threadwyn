@@ -51,6 +51,8 @@ prisma/*.db
 # local agent tooling — not part of the application
 .claude/
 .agents/
+.codex/
+.impeccable/
 skills-lock.json
 .mcp.json
 CLAUDE.md

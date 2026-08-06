@@ -27,7 +27,18 @@ const eslintConfig = defineConfig([
   // `.next-verify` is the throwaway dist dir used by `npm run build:check`, so a
   // production build can be verified without stomping on the running dev
   // server's `.next`. It is build output like any other — never lint it.
-  globalIgnores([".next/**", ".next-verify/**", "out/**", "build/**", "next-env.d.ts"]),
+  // `.claude` and `.agents` hold installed agent tooling, not application code.
+  // Without them here, `npm run lint` reports hundreds of warnings from someone
+  // else's source.
+  globalIgnores([
+    ".next/**",
+    ".next-verify/**",
+    "out/**",
+    "build/**",
+    "next-env.d.ts",
+    ".claude/**",
+    ".agents/**",
+  ]),
 ]);
 
 export default eslintConfig;
