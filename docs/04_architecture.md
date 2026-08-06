@@ -12,10 +12,11 @@ something is missing or weak, it says so.
 - [7. What to improve next](#7-what-to-improve-next)
 - [8. Functional flows](#8-functional-flows)
 - [9. Technical reference](#9-technical-reference)
+- [10. Landing page, header and the WeaveScope entry point](#10-landing-page-header-and-the-weavescope-entry-point)
 
-Scale: 4,565 lines under `src/app`, 11,532 under `src/components`, 3,207 under
+Scale: 4,516 lines under `src/app`, 12,374 under `src/components`, 3,207 under
 `src/lib`, 1,586 in `prisma`. 20 Prisma models and enums, 21 database indexes,
-19 API route handlers, 25 pages, 49 components.
+19 API route handlers, 23 pages, 51 components.
 
 ---
 
@@ -209,7 +210,7 @@ Other performance properties:
 | **No CI** | Typecheck, lint and build are run manually. |
 | **No dependency injection** | Services import the `db` singleton directly. Testable only by mocking the module. |
 | **JWT cannot be revoked** | A 14-day token stays valid until expiry. No session table, no denylist. |
-| **Unpaginated lists** | `getBuyerOrders` and `listSupplierProducts` return every row. Fine at seed scale, not at 10,000 orders. |
+| **Unpaginated lists** | `getBuyerOrders`, `listSupplierProducts` and the supplier directory return every row. Fine at seed scale, not at 10,000. The directory filters client-side for the same reason. |
 | **Images in Postgres** | `UploadedImage` stores bytes in the database, against Neon's 0.5 GB. |
 | **No observability** | No error tracking, no structured logging, no metrics. |
 | **`embed()` is dead code** | The Hugging Face embedding upgrade is written and wired but never called — search uses `embedLocal` throughout. |
@@ -243,7 +244,10 @@ Other performance properties:
 | `motion/reveal.tsx` | `Reveal`, `Stagger`, `StaggerItem`, `MaskedHeading` — the entire scroll-animation vocabulary, used across every marketing surface |
 | `layout/site-header.tsx` | Every buyer-facing page; splits server (session read) from `site-header-client.tsx` (interaction) |
 | `ai/assistant-dock.tsx` | Mounted globally; takes an optional `productSlug` to narrow its context |
-| `weavescope/*` | `hero-cluster` on the landing page, `loom-scene`/`loom-stage` on `/weavescope/[slug]` |
+| `home/fabric-wheel.tsx` | The dial on the landing page: every hero fabric on an arc, the selected one lifted out, and the only entry point to WeaveScope |
+| `home/category-card.tsx` | Category tile that cross-fades to the real rendered material on hover |
+| `suppliers/supplier-directory.tsx` | The mill list plus its client-side search |
+| `weavescope/*` | `loom-scene`/`loom-stage` on `/weavescope/[slug]`, reached from the dial |
 
 ### Reusable non-component modules
 
@@ -375,7 +379,8 @@ finding wearing two hats.
 
 ```
 / (landing)
-  ├─ hero cards ──────────────► /weavescope/[slug]   3D fabric breakdown
+  ├─ FabricWheel ─────────────► /weavescope/[slug]   3D fabric breakdown
+  │    scroll / arrows / click a card to change the selection
   ├─ HeroSearch ──────────────► /marketplace?q=…
   ├─ category tiles ──────────► /marketplace?category=…
   └─ AssistantDock (⌘K) ──────► POST /api/v1/ai/chat
@@ -729,6 +734,69 @@ matched, and the user reviews every field before it saves.
 
 ---
 
+## 10. Landing page, header and the WeaveScope entry point
+
+The three surfaces most recently reworked, and why.
+
+**`FabricWheel` replaced a stack of five overlapping cards.** The stack buried
+four of the five fabrics and its only affordance was a custom cursor that
+appeared on hover, so touch and keyboard users never discovered that WeaveScope
+existed at all — the site's one genuinely distinctive feature was reachable only
+by mouse. The dial shows every fabric at once, lifts the selected one out at
+full size, and turns by scroll, by arrow button or by clicking any card. The
+entry point is a real `<Link>` labelled with its destination.
+
+Positions come from `left`/`top` percentages computed with sin and cos, not a
+`rotate() translateY(-R)` chain: a percentage inside `translateY` resolves
+against the element's own height rather than the container's, so the ring would
+break as the panel resized. Every computed coordinate is rounded to three
+decimals, because `Math.sin` is not required to be correctly rounded and Node
+and the browser disagreed in the last digit often enough to trip React's
+hydration check.
+
+Wheel events are bound with a non-passive native listener rather than React's
+`onWheel`, which is registered passively and therefore cannot `preventDefault`;
+without that the page scrolled away underneath the dial while it was turning.
+
+**`CategoryCard` shows the material.** The grid described cloth with a 10px
+coloured dot on a site whose argument is that it renders real construction.
+Each category now cross-fades to its defining weave at a realistic weight, so
+shirting, denim, satin and jersey look like different cloth rather than one
+swatch in eight colours. A wipe was tried first and abandoned: it had to travel
+to a position just off the card edge, and sub-pixel rounding there left a
+hairline of fabric showing under every card.
+
+**The header's search control is a shortcut, not a search.** It has no field
+and submits nothing, so it is hidden on `/`, `/marketplace` and `/suppliers`,
+all of which carry a real one. Its `/` badge advertised a keyboard shortcut
+that was bound to nothing; it now navigates, guarded so it never fires while
+someone is typing.
+
+**`/suppliers` gained a real search** — name, tagline, city, state, business
+type, fabric types, categories and certifications, since someone hunting for a
+mill rarely knows its name. Client-side, because the page already loads every
+supplier in one query.
+
+**Three WeaveScope performance fixes**, all invisible and all worth knowing:
+
+- The loading poster is a viewport-sized `blur-2xl` over a `FabricSwatch` that
+  itself paints an `feTurbulence` filter and two blend modes. It used to fade to
+  `opacity: 0` and stay mounted forever, and a transparent layer is still
+  composited — every frame for the rest of the session paid for a 40px blur of a
+  filtered SVG nobody could see. It now leaves the tree.
+- `frameloop` stops when the stage is off screen.
+- Mount and paint are separate observers. The wrapper is 560vh tall, so the
+  200px margin that correctly preloads the chunk marks it "visible" a whole
+  screen early; driving the render loop from that signal meant drawing filaments
+  nobody could see.
+
+**Imported images live in `src/assets/`, not `public/`.** Anything in `public/`
+is served verbatim *as well as* being emitted hashed into `_next/static/media`,
+so importing from there shipped 9.4 MB of photographs twice and referenced the
+second copy.
+
+---
+
 ## Appendix — verification performed
 
 | Claim | How it was checked |
@@ -742,3 +810,6 @@ matched, and the user reviews every field before it saves.
 | Checkbox CSS bug | Grepped the compiled stylesheet, found zero `:checked` rules |
 | Production build | `npm run build:check` green; typecheck and lint clean |
 | No committed secrets | Scanned tracked files for HF tokens, `sk-` keys, Postgres URLs with passwords |
+| Hydration is clean | React named the mismatching attributes; fixed by rounding, re-verified in the SSR output |
+| Images emit once | Build output checked for duplicate copies after moving them out of `public/` |
+| Agent tooling excluded | `.claude`, `.agents`, `.codex`, `.impeccable` confirmed gitignored before pushing |
