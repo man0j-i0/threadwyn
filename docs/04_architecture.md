@@ -766,11 +766,16 @@ swatch in eight colours. A wipe was tried first and abandoned: it had to travel
 to a position just off the card edge, and sub-pixel rounding there left a
 hairline of fabric showing under every card.
 
-**The header's search control is a shortcut, not a search.** It has no field
-and submits nothing, so it is hidden on `/`, `/marketplace` and `/suppliers`,
-all of which carry a real one. Its `/` badge advertised a keyboard shortcut
-that was bound to nothing; it now navigates, guarded so it never fires while
-someone is typing.
+**The header carries no search control.** It used to hold a pill reading
+"Search fabrics…" with a `/` badge beside it, which was never a search: no
+field, nothing to submit, just a link to `/marketplace` wearing the shape of an
+input. Hiding it on the routes with a real search narrowed the lie without
+ending it — everywhere else it still invited a click people expected to focus a
+cursor. It is gone, and the `/` shortcut with it: that key binding existed only
+to make the printed badge honest, and a global key that hijacks an ordinary
+character to navigate somewhere unannounced is worse than no shortcut. Search
+now appears only where it can be typed into — the hero field, the marketplace
+toolbar, and the mill search below.
 
 **`/suppliers` gained a real search** — name, tagline, city, state, business
 type, fabric types, categories and certifications, since someone hunting for a

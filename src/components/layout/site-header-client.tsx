@@ -4,14 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
-import {
-  CaretDown,
-  Handbag,
-  MagnifyingGlass,
-  SignOut,
-  Storefront,
-  User as UserIcon,
-} from "@phosphor-icons/react";
+import { CaretDown, Handbag, SignOut, Storefront, User as UserIcon } from "@phosphor-icons/react";
 
 import { cn, initials } from "@/lib/utils";
 import { Logo } from "@/components/brand/logo";
@@ -22,15 +15,24 @@ type Category = { name: string; slug: string; blurb: string; accentHex: string }
 type SessionUser = { name: string; email: string; role: "BUYER" | "SUPPLIER"; onboarded: boolean };
 
 /**
- * Routes that carry a real, working search of their own.
+ * The header carries no search control.
  *
- * On these the header shortcut would be a second search-shaped control that
- * cannot be typed into: the landing page has the hero search, the marketplace
- * has its own field and filters, and on /suppliers a "Search fabrics" pill
- * would point away from the mills the visitor is actually looking at.
+ * It used to hold a pill labelled "Search fabrics…" with a `/` badge beside
+ * it. It was never a search: no field, nothing to submit, just a link to the
+ * marketplace wearing the shape of an input. Hiding it on the routes that had
+ * a real search of their own narrowed the lie without ending it — everywhere
+ * else it still invited a click that people expected to focus a cursor, and it
+ * put a second search-shaped thing in the chrome above pages whose own search
+ * is the one that works.
+ *
+ * The `/` shortcut went with it. It existed to make the printed badge honest;
+ * with no badge to justify it, a global key that hijacks an ordinary character
+ * to navigate somewhere unannounced is worse than no shortcut at all.
+ *
+ * Search now lives only where it can actually be typed into: the hero field on
+ * the landing page, the marketplace toolbar, and the mill search on
+ * /suppliers.
  */
-const HAS_OWN_SEARCH = ["/", "/marketplace", "/suppliers"];
-
 export function HeaderClient({
   floating,
   cartCount,
@@ -43,12 +45,9 @@ export function HeaderClient({
   user: SessionUser | null;
 }) {
   const pathname = usePathname();
-  const router = useRouter();
   const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [catsOpen, setCatsOpen] = useState(false);
-
-  const showCatalogueShortcut = !HAS_OWN_SEARCH.includes(pathname);
 
   // Passive listener + a boolean threshold: this fires at most twice per
   // scroll gesture rather than on every frame. The initial read is deferred to
@@ -62,40 +61,6 @@ export function HeaderClient({
       window.removeEventListener("scroll", onScroll);
     };
   }, []);
-
-  /**
-   * Make the `/` badge tell the truth.
-   *
-   * The shortcut was printed next to the control but bound to nothing, so the
-   * header advertised a keyboard affordance the app did not have. It now goes
-   * to the catalogue, and only where the control itself is visible.
-   *
-   * Guarded against firing while someone is typing: `/` is an ordinary
-   * character in a search box, a supplier's product description or the
-   * assistant, and stealing it there would be worse than not having it.
-   */
-  useEffect(() => {
-    if (!showCatalogueShortcut) return;
-
-    function onKey(e: KeyboardEvent) {
-      if (e.key !== "/" || e.metaKey || e.ctrlKey || e.altKey) return;
-      const el = document.activeElement as HTMLElement | null;
-      if (
-        el &&
-        (el.tagName === "INPUT" ||
-          el.tagName === "TEXTAREA" ||
-          el.tagName === "SELECT" ||
-          el.isContentEditable)
-      ) {
-        return;
-      }
-      e.preventDefault();
-      router.push("/marketplace");
-    }
-
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [showCatalogueShortcut, router]);
 
   // Navigating anywhere closes whatever was open. Adjusting during render is
   // React's pattern for resetting state on a changed input — an effect would
@@ -201,27 +166,6 @@ export function HeaderClient({
           <div className="flex-1" />
 
           {/* --------------------------------- actions -------------------------------- */}
-          {/* Hidden where a real search field is already on the page.
-              This control is a shortcut to the catalogue, not a search input:
-              it has no field and submits nothing. On the landing page the hero
-              search sits a few hundred pixels below it, and the marketplace has
-              its own working search and filters, so in both places it was a
-              second, fake search box competing with a real one. Everywhere else
-              it earns its keep as a way back to the catalogue. */}
-          {showCatalogueShortcut ? (
-            <Link
-              href="/marketplace"
-              aria-label="Search the fabric catalogue"
-              className="hidden h-10 cursor-pointer items-center gap-2.5 rounded-full border border-line bg-surface px-3.5 text-[13px] text-subtle transition-colors hover:border-line-strong hover:text-muted md:flex"
-            >
-              <MagnifyingGlass size={15} weight="light" />
-              <span>Search fabrics…</span>
-              <kbd className="ml-3 rounded border border-line bg-sunken px-1.5 py-0.5 font-mono text-[10px] text-subtle">
-                /
-              </kbd>
-            </Link>
-          ) : null}
-
           <ThemeToggle className="hidden sm:grid" />
 
           {user?.role === "BUYER" || !user ? (
