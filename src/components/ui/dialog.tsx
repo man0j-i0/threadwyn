@@ -33,6 +33,24 @@ export function Dialog({
   const panelRef = useRef<HTMLDivElement>(null);
   const returnFocusRef = useRef<HTMLElement | null>(null);
 
+  /**
+   * `onClose` is held in a ref so the effect below can depend on `open` alone.
+   *
+   * Callers pass it as an inline arrow — `onClose={() => setTarget(null)}` —
+   * which is a fresh function identity on every render of the parent. With
+   * `onClose` in the dependency array, any parent state change tore the effect
+   * down and set it up again: the teardown returned focus to the trigger and
+   * the setup's rAF moved focus to `focusables()[0]`, which is the close
+   * button. A dialog containing a text field therefore lost focus to the cross
+   * after every single keystroke, because each character re-rendered the
+   * parent. Reading the latest callback from a ref keeps the trap, the scroll
+   * lock and the initial focus tied to the dialog actually opening.
+   */
+  const onCloseRef = useRef(onClose);
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  });
+
   useEffect(() => {
     if (!open) return;
 
@@ -54,7 +72,7 @@ export function Dialog({
     function onKeyDown(e: KeyboardEvent) {
       if (e.key === "Escape") {
         e.preventDefault();
-        onClose();
+        onCloseRef.current();
         return;
       }
       if (e.key !== "Tab") return;
@@ -78,7 +96,7 @@ export function Dialog({
       document.body.style.overflow = overflow;
       returnFocusRef.current?.focus?.();
     };
-  }, [open, onClose]);
+  }, [open]);
 
   const widths = {
     sm: "sm:max-w-sm",
@@ -175,19 +193,26 @@ export function Drawer({
   footer?: React.ReactNode;
   className?: string;
 }) {
+  // Same reasoning as Dialog: callers pass an inline arrow, so depending on
+  // `onClose` re-ran the scroll lock on every parent render.
+  const onCloseRef = useRef(onClose);
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  });
+
   useEffect(() => {
     if (!open) return;
     const overflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     function onKeyDown(e: KeyboardEvent) {
-      if (e.key === "Escape") onClose();
+      if (e.key === "Escape") onCloseRef.current();
     }
     document.addEventListener("keydown", onKeyDown);
     return () => {
       document.removeEventListener("keydown", onKeyDown);
       document.body.style.overflow = overflow;
     };
-  }, [open, onClose]);
+  }, [open]);
 
   return (
     <AnimatePresence>
