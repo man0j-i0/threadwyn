@@ -524,7 +524,7 @@ export function ProductForm({
                   inputMode="decimal"
                   value={form.pricePerMetre}
                   onChange={(e) => set("pricePerMetre", Number(e.target.value))}
-                  prefix="₹"
+                  prefix="$"
                   invalid={Boolean(errors.pricePerMetre)}
                 />
               )}
@@ -540,7 +540,7 @@ export function ProductForm({
                   inputMode="decimal"
                   value={form.compareAtPrice ?? ""}
                   onChange={(e) => set("compareAtPrice", e.target.value ? Number(e.target.value) : null)}
-                  prefix="₹"
+                  prefix="$"
                 />
               )}
             </Field>

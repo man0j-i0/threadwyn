@@ -459,7 +459,7 @@ export function CheckoutFlow({
                 value={formatMoney(cart.subtotal)}
               />
               <Row label="Shipping" value={cart.shippingFee === 0 ? "Free" : formatMoney(cart.shippingFee)} />
-              <Row label="GST (5%)" value={formatMoney(cart.tax)} />
+              <Row label="Duties & handling (5%)" value={formatMoney(cart.tax)} />
               <div className="flex items-baseline justify-between gap-3 border-t border-line pt-3">
                 <dt className="text-[14px] font-medium text-ink">Total</dt>
                 <dd className="font-mono text-[20px] font-medium text-ink tnum">{formatMoney(cart.total)}</dd>

@@ -494,14 +494,14 @@ function AssistantPreview() {
         <div className="space-y-4 pt-5">
           <div className="flex justify-end">
             <p className="max-w-[85%] rounded-[var(--radius-md)] rounded-br-sm bg-brand px-3.5 py-2.5 text-[13.5px] leading-relaxed text-white dark:text-[#08110d]">
-              Breathable cotton for summer shirting, under ₹300 a metre, at least 2000m on hand
+              Breathable cotton for summer shirting, under $4 a metre, at least 2000m on hand
             </p>
           </div>
 
           <div className="space-y-3">
             <p className="text-[13px] text-subtle">Applied these filters:</p>
             <div className="flex flex-wrap gap-1.5">
-              {["Category: Shirting", "Fibre: Cotton", "≤ ₹300/m", "Stock ≥ 2000m", "≤ 160 gsm"].map((f) => (
+              {["Category: Shirting", "Fibre: Cotton", "≤ $4/m", "Stock ≥ 2000m", "≤ 160 gsm"].map((f) => (
                 <span
                   key={f}
                   className="inline-flex items-center gap-1.5 rounded-full border border-brand-line bg-brand-soft px-2.5 py-1 font-mono text-[11px] text-brand-ink"
@@ -516,9 +516,9 @@ function AssistantPreview() {
 
             <div className="space-y-2 rounded-[var(--radius-md)] border border-line bg-canvas-veil p-3.5">
               {[
-                { name: "Compact Cotton Poplin 120", meta: "120 gsm · 8,400m · ₹238/m", hex: "#F7F5F0", weave: "PLAIN" as WeaveKey },
-                { name: "End-on-End 110", meta: "110 gsm · 4,100m · ₹246/m", hex: "#A9C0D4", weave: "PLAIN" as WeaveKey },
-                { name: "Indigo Chambray 130", meta: "130 gsm · 3,600m · ₹254/m", hex: "#5A6E92", weave: "PLAIN" as WeaveKey },
+                { name: "Compact Cotton Poplin 120", meta: "120 gsm · 8,400m · $2.80/m", hex: "#F7F5F0", weave: "PLAIN" as WeaveKey },
+                { name: "End-on-End 110", meta: "110 gsm · 4,100m · $2.90/m", hex: "#A9C0D4", weave: "PLAIN" as WeaveKey },
+                { name: "Indigo Chambray 130", meta: "130 gsm · 3,600m · $2.95/m", hex: "#5A6E92", weave: "PLAIN" as WeaveKey },
               ].map((r) => (
                 <div key={r.name} className="flex items-center gap-3">
                   <span className="size-9 shrink-0 overflow-hidden rounded-[var(--radius-xs)]">

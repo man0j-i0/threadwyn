@@ -36,6 +36,20 @@ function int(value: string | string[] | undefined): number | undefined {
   return Number.isFinite(n) ? Math.trunc(n) : undefined;
 }
 
+/**
+ * Prices carry cents; weights, quantities, lead times and page numbers do not.
+ *
+ * This exists because `int` truncates: a $4.50 ceiling arrived as $4 and
+ * silently dropped every fabric between the two. Harmless when the catalogue
+ * was priced in whole rupees, wrong the moment it was priced in dollars.
+ */
+function decimal(value: string | string[] | undefined): number | undefined {
+  const raw = one(value);
+  if (raw == null || raw === "") return undefined;
+  const n = Number(raw);
+  return Number.isFinite(n) ? n : undefined;
+}
+
 export function parseSearchParams(params: RawSearchParams): ProductFilters {
   const sortRaw = one(params.sort) as SortKey | undefined;
 
@@ -46,8 +60,8 @@ export function parseSearchParams(params: RawSearchParams): ProductFilters {
     weave: list(params.weave),
     supplier: list(params.supplier),
     sustainability: list(params.sustainability),
-    priceMin: int(params.priceMin),
-    priceMax: int(params.priceMax),
+    priceMin: decimal(params.priceMin),
+    priceMax: decimal(params.priceMax),
     gsmMin: int(params.gsmMin),
     gsmMax: int(params.gsmMax),
     moqMax: int(params.moqMax),

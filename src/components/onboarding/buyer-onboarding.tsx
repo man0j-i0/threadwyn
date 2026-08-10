@@ -49,7 +49,7 @@ const SCRIPT: readonly ScriptStep[] = [
   {
     key: "volume",
     prompt: "Roughly what quantity do you order at a time, and what's your ceiling on price per metre?",
-    hint: "e.g. “usually 500 to 2000 metres, nothing over ₹800”",
+    hint: "e.g. “usually 500 to 2000 metres, nothing over $10”",
   },
   {
     key: "extra",
@@ -336,7 +336,7 @@ export function BuyerOnboarding({
                   id="bo-budgetMin"
                   type="number"
                   inputMode="numeric"
-                  prefix="₹"
+                  prefix="$"
                   value={form.budgetMin ?? ""}
                   onChange={(e) => set("budgetMin", e.target.value ? Number(e.target.value) : null)}
                 />
@@ -349,7 +349,7 @@ export function BuyerOnboarding({
                   id="bo-budgetMax"
                   type="number"
                   inputMode="numeric"
-                  prefix="₹"
+                  prefix="$"
                   value={form.budgetMax ?? ""}
                   onChange={(e) => set("budgetMax", e.target.value ? Number(e.target.value) : null)}
                   className={extracted.has("budgetMax") ? "border-brand bg-brand-soft/40" : undefined}

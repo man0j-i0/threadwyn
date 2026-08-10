@@ -39,7 +39,7 @@ Fields (all optional, omit what wasn't asked for):
   fibre        cotton | linen | silk | wool | polyester | viscose | elastane | nylon | cupro | zari
   weave        PLAIN | TWILL | SATIN | JACQUARD | HERRINGBONE | JERSEY | RIB | DOBBY | CANVAS | CREPE
   sustainability  GOTS | OEKO-TEX Standard 100 | GRS Recycled | European Flax | BCI Cotton | Fairtrade
-  priceMin/priceMax   INR per metre
+  priceMin/priceMax   USD per metre, may carry cents (e.g. 4.5)
   gsmMin/gsmMax       grams per square metre
   stockMin            minimum metres available
   moqMax              maximum acceptable minimum-order quantity, metres
@@ -54,7 +54,7 @@ export async function POST(req: Request) {
 
     // The rule parser always runs — it is the floor. A model, when present,
     // only adds constraints the rules missed; it never overwrites them,
-    // because a regex match on "under ₹300" is more reliable than a sample.
+    // because a regex match on "under $4" is more reliable than a sample.
     const rules = parseQuery(query);
     let filters: ProductFilters = rules.filters;
     let mode: "model" | "rules" = "rules";

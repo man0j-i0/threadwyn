@@ -4,7 +4,7 @@ import type { ProductFilters } from "@/server/services/product-service";
  * Deterministic natural-language → filter parser.
  *
  * This is the floor the AI stands on, not a placeholder. Textile sourcing
- * language is narrow and highly conventional — "lightweight", "under ₹300",
+ * language is narrow and highly conventional — "lightweight", "under $4",
  * "at least 2000 metres", "GOTS", "twill" — so a rule set covers the majority
  * of real queries with zero latency and zero cost. When a model is configured
  * it runs *first* and this parser merges in anything it missed; when no model
@@ -80,7 +80,7 @@ function num(raw: string) {
 }
 
 export function parseQuery(input: string): ParsedQuery {
-  const text = ` ${input.toLowerCase().replace(/[₹]/g, " ₹ ").replace(/\s+/g, " ")} `;
+  const text = ` ${input.toLowerCase().replace(/\$/g, " $ ").replace(/\s+/g, " ")} `;
   const filters: ProductFilters = {};
   const applied: ParsedQuery["applied"] = [];
   const consumed: string[] = [];
@@ -91,14 +91,14 @@ export function parseQuery(input: string): ParsedQuery {
 
   /* ------------------------------------------------------------- price */
 
-  const priceBetween = text.match(new RegExp(`(?:between|from)\\s*₹?\\s*${NUM}\\s*(?:and|to|[-–])\\s*₹?\\s*${NUM}`));
-  const priceUnder = text.match(new RegExp(`(?:under|below|less than|cheaper than|max|upto|up to|within)\\s*₹?\\s*${NUM}`));
-  const priceOver = text.match(new RegExp(`(?:over|above|more than|at least|minimum)\\s*₹?\\s*${NUM}\\s*(?:a |per |/)?\\s*(?:rupees?|rs|inr)?\\s*(?:a |per |/)?\\s*(?:m|metre|meter)`));
+  const priceBetween = text.match(new RegExp(`(?:between|from)\\s*\\$?\\s*${NUM}\\s*(?:and|to|[-–])\\s*\\$?\\s*${NUM}`));
+  const priceUnder = text.match(new RegExp(`(?:under|below|less than|cheaper than|max|upto|up to|within)\\s*\\$?\\s*${NUM}`));
+  const priceOver = text.match(new RegExp(`(?:over|above|more than|at least|minimum)\\s*\\$?\\s*${NUM}\\s*(?:a |per |/)?\\s*(?:dollars?|usd)?\\s*(?:a |per |/)?\\s*(?:m|metre|meter)`));
 
   if (priceBetween) {
     filters.priceMin = num(priceBetween[1]!);
     filters.priceMax = num(priceBetween[2]!);
-    add("priceMax", `₹${filters.priceMin}–₹${filters.priceMax}/m`, String(filters.priceMax));
+    add("priceMax", `$${filters.priceMin}–$${filters.priceMax}/m`, String(filters.priceMax));
     consumed.push(priceBetween[0]);
   } else if (priceUnder && !/\b(gsm|gram|metre|meter|m\b)\s*$/.test(priceUnder[0])) {
     // "under 300" next to a gsm/metre word is a weight or quantity, not a price.
@@ -107,23 +107,35 @@ export function parseQuery(input: string): ParsedQuery {
     const looksLikeGsm = new RegExp(`${priceUnder[1]}\\s*(gsm|g/m)`).test(text);
     if (!looksLikeMetres && !looksLikeGsm) {
       filters.priceMax = value;
-      add("priceMax", `≤ ₹${value}/m`, String(value));
+      add("priceMax", `≤ $${value}/m`, String(value));
       consumed.push(priceUnder[0]);
     }
   }
   if (priceOver) {
-    filters.priceMin = num(priceOver[1]!);
-    add("priceMin", `≥ ₹${filters.priceMin}/m`, String(filters.priceMin));
-    consumed.push(priceOver[0]);
+    // Same guard the `under` branch carries, and for the same reason: this
+    // pattern ends in `(?:m|metre|meter)`, so "at least 2000m in stock" —
+    // a *quantity* — otherwise matched as a $2000 price floor. Paired with a
+    // "under $4" ceiling that produced priceMin 2000 / priceMax 4 and an empty
+    // result set for one of the most natural queries a buyer can type.
+    const value = num(priceOver[1]!);
+    const looksLikeMetres = new RegExp(`${priceOver[1]}\\s*(m\\b|metres?|meters?)`).test(text);
+    const looksLikeGsm = new RegExp(`${priceOver[1]}\\s*(gsm|g/m)`).test(text);
+    if (!looksLikeMetres && !looksLikeGsm) {
+      filters.priceMin = value;
+      add("priceMin", `≥ $${value}/m`, String(value));
+      consumed.push(priceOver[0]);
+    }
   }
 
+  // Catalogue runs $1.55–$28.80/m, so these two bands are where "cheap" and
+  // "premium" actually sit. They move with the catalogue, not with the words.
   if (!filters.priceMax && /\b(budget|cheap|affordable|economical|low cost|low-cost)\b/.test(text)) {
-    filters.priceMax = 350;
-    add("priceMax", "≤ ₹350/m", "350");
+    filters.priceMax = 4;
+    add("priceMax", "≤ $4/m", "4");
   }
   if (!filters.priceMin && /\b(premium|luxury|high end|high-end|finest)\b/.test(text)) {
-    filters.priceMin = 700;
-    add("priceMin", "≥ ₹700/m", "700");
+    filters.priceMin = 8;
+    add("priceMin", "≥ $8/m", "8");
   }
 
   /* --------------------------------------------------------------- gsm */
@@ -162,7 +174,7 @@ export function parseQuery(input: string): ParsedQuery {
   );
   if (stockMatch) {
     filters.stockMin = num(stockMatch[1]!);
-    add("stockMin", `Stock ≥ ${filters.stockMin.toLocaleString("en-IN")}m`, String(filters.stockMin));
+    add("stockMin", `Stock ≥ ${filters.stockMin.toLocaleString("en-US")}m`, String(filters.stockMin));
     consumed.push(stockMatch[0]);
   } else if (/\b(in stock|available now|ready stock|immediate|on hand)\b/.test(text)) {
     filters.inStock = true;
@@ -269,11 +281,11 @@ export function describeFilters(f: ProductFilters): ParsedQuery["applied"] {
   if (f.weave?.length) for (const c of f.weave) out.push({ key: "weave", label: `Weave: ${cap(c.toLowerCase())}`, value: c });
   if (f.supplier?.length) for (const c of f.supplier) out.push({ key: "supplier", label: `Mill: ${cap(c.replace(/-/g, " "))}`, value: c });
   if (f.sustainability?.length) for (const c of f.sustainability) out.push({ key: "sustainability", label: c, value: c });
-  if (f.priceMin != null) out.push({ key: "priceMin", label: `≥ ₹${f.priceMin}/m`, value: String(f.priceMin) });
-  if (f.priceMax != null) out.push({ key: "priceMax", label: `≤ ₹${f.priceMax}/m`, value: String(f.priceMax) });
+  if (f.priceMin != null) out.push({ key: "priceMin", label: `≥ $${f.priceMin}/m`, value: String(f.priceMin) });
+  if (f.priceMax != null) out.push({ key: "priceMax", label: `≤ $${f.priceMax}/m`, value: String(f.priceMax) });
   if (f.gsmMin != null) out.push({ key: "gsmMin", label: `≥ ${f.gsmMin} gsm`, value: String(f.gsmMin) });
   if (f.gsmMax != null) out.push({ key: "gsmMax", label: `≤ ${f.gsmMax} gsm`, value: String(f.gsmMax) });
-  if (f.stockMin != null) out.push({ key: "stockMin", label: `Stock ≥ ${f.stockMin.toLocaleString("en-IN")}m`, value: String(f.stockMin) });
+  if (f.stockMin != null) out.push({ key: "stockMin", label: `Stock ≥ ${f.stockMin.toLocaleString("en-US")}m`, value: String(f.stockMin) });
   if (f.moqMax != null) out.push({ key: "moqMax", label: `MOQ ≤ ${f.moqMax}m`, value: String(f.moqMax) });
   if (f.leadTimeMax != null) out.push({ key: "leadTimeMax", label: `Lead ≤ ${f.leadTimeMax} days`, value: String(f.leadTimeMax) });
   if (f.inStock) out.push({ key: "inStock", label: "In stock", value: "1" });

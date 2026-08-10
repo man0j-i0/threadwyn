@@ -197,7 +197,7 @@ export default async function OrderPage({ params, searchParams }: PageProps) {
           <dl className="mt-3.5 space-y-2.5">
             <Row label="Subtotal" value={formatMoney(data.subtotal)} />
             <Row label="Shipping" value={data.shippingFee === 0 ? "Free" : formatMoney(data.shippingFee)} />
-            <Row label="GST" value={formatMoney(data.tax)} />
+            <Row label="Duties & handling" value={formatMoney(data.tax)} />
             <div className="flex items-baseline justify-between gap-3 border-t border-line pt-2.5">
               <dt className="text-[13.5px] font-medium text-ink">Total</dt>
               <dd className="font-mono text-[17px] font-medium text-ink tnum">{formatMoney(data.total)}</dd>

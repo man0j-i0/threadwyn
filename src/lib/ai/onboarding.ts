@@ -11,7 +11,7 @@ import { activeProvider, complete, parseJsonLoose, providerLabel } from "./provi
  * that can wander is a liability, and a scripted flow works identically with or
  * without a model. What AI does here is the genuinely tedious part: turning
  * free-form answers ("we're a small womenswear label in Bangalore, mostly linen
- * and silk, orders around a thousand metres, nothing over ₹800") into a
+ * and silk, orders around a thousand metres, nothing over $10") into a
  * structured profile.
  *
  * Nothing is saved from this directly. The extraction is returned to the client
@@ -34,7 +34,7 @@ export const BUYER_SCRIPT = [
   {
     key: "volume",
     prompt: "Roughly what quantity do you order at a time, and what's your ceiling on price per metre?",
-    hint: "e.g. “usually 500 to 2000 metres, nothing over ₹800”",
+    hint: "e.g. “usually 500 to 2000 metres, nothing over $10”",
   },
   {
     key: "extra",
@@ -96,7 +96,7 @@ const list = () =>
     .optional()
     .catch(undefined);
 
-/** Accepts `800`, `"800"`, `"₹800"`, `"800/m"`. */
+/** Accepts `10`, `"10"`, `"$10"`, `"10/m"`. */
 const num = () =>
   z
     .preprocess((v) => {
@@ -174,8 +174,8 @@ const BUYER_PROMPT = `Extract a structured buyer profile from this onboarding co
   categoryInterest  slugs from: ${CATEGORY_SLUGS.join(", ")}
   preferredFabrics  from: ${FIBRES.join(", ")}
   typicalOrderQty   under-500 | 500-2000 | 2000-10000 | 10000-plus
-  budgetMin         INR per metre, lower bound
-  budgetMax         INR per metre, upper bound
+  budgetMin         USD per metre, lower bound
+  budgetMax         USD per metre, upper bound
   notes             anything else worth remembering, one or two sentences`;
 
 const SUPPLIER_PROMPT = `Extract a structured supplier profile from this onboarding conversation. Reply with JSON only, omitting anything the person did not actually say. Never invent a value — especially not contact details or an address.
@@ -233,7 +233,7 @@ export async function extractProfile(
   }
 
   // The model fills gaps; the rule pass wins where both found something, since
-  // a regex on "₹800" is more reliable than a sample from a 7B model.
+  // a regex on "$10" is more reliable than a sample from a 7B model.
   return {
     draft: { ...parsed.data, ...stripEmpty(rules) } as BuyerDraft & SupplierDraft,
     mode: "model" as const,
@@ -315,9 +315,9 @@ function rulesBuyer(answers: string[]): BuyerDraft {
             : ("10000-plus" as const);
 
   const budgetMax =
-    firstNumber(lower, /(?:under|below|max|upto|up to|nothing over|no more than|ceiling of)\s*₹?\s*(\d[\d,]*)/) ??
+    firstNumber(lower, /(?:under|below|max|upto|up to|nothing over|no more than|ceiling of)\s*\$?\s*(\d[\d,]*)/) ??
     undefined;
-  const budgetMin = firstNumber(lower, /(?:from|above|over|at least)\s*₹?\s*(\d[\d,]*)\s*(?:per|a|\/)\s*(?:m|metre)/);
+  const budgetMin = firstNumber(lower, /(?:from|above|over|at least)\s*\$?\s*(\d[\d,]*)\s*(?:per|a|\/)\s*(?:m|metre)/);
 
   const businessType = /\bbrand\b|\blabel\b/.test(lower)
     ? ("BRAND" as const)

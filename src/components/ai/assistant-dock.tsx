@@ -50,7 +50,7 @@ type Turn = {
 const OPENERS = [
   "What's the lightest cotton you have for summer shirting?",
   "Compare linen against linen-cotton for a resort shirt",
-  "I need 3000m of navy jersey under ₹350",
+  "I need 3000m of navy jersey under $4",
   "Which mills can ship in under 10 days?",
 ];
 

@@ -89,7 +89,7 @@ export function FilterPanel({ facets, onApplied }: { facets: Facets; onApplied?:
    * Calling setSingle twice in a row looked fine but silently dropped the first
    * write: both calls run in the same tick, so the second still reads the draft
    * from the render that is being replaced and overwrites what the first just
-   * set. Only the last key survived — which is why "Under ₹300" (max only)
+   * set. Only the last key survived — which is why "Under $5" (max only)
    * appeared to work and every actual range did not.
    */
   const setRange = useCallback(
@@ -149,15 +149,15 @@ export function FilterPanel({ facets, onApplied }: { facets: Facets; onApplied?:
           minKey="priceMin"
           maxKey="priceMax"
           bounds={facets.price}
-          unit="₹"
+          unit="$"
           searchParams={view}
           onCommit={setSingle}
           onRange={setRange}
           presets={[
-            { label: "Under ₹300", min: null, max: 300 },
-            { label: "₹300–₹600", min: 300, max: 600 },
-            { label: "₹600–₹1000", min: 600, max: 1000 },
-            { label: "₹1000+", min: 1000, max: null },
+            { label: "Under $5", min: null, max: 5 },
+            { label: "$5–$10", min: 5, max: 10 },
+            { label: "$10–$20", min: 10, max: 20 },
+            { label: "$20+", min: 20, max: null },
           ]}
         />
       </Group>
@@ -470,7 +470,7 @@ function RangeInputs({
 
       <div className="flex items-center gap-2">
         <BoundInput
-          aria-label={`Minimum ${unit === "₹" ? "price" : "weight"}`}
+          aria-label={`Minimum ${unit === "$" ? "price" : "weight"}`}
           placeholder={`${unit}${bounds.min}`}
           defaultValue={currentMin ?? ""}
           onCommit={(v) => onCommit(minKey, v)}
@@ -479,7 +479,7 @@ function RangeInputs({
           to
         </span>
         <BoundInput
-          aria-label={`Maximum ${unit === "₹" ? "price" : "weight"}`}
+          aria-label={`Maximum ${unit === "$" ? "price" : "weight"}`}
           placeholder={`${unit}${bounds.max}`}
           defaultValue={currentMax ?? ""}
           onCommit={(v) => onCommit(maxKey, v)}

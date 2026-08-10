@@ -8,20 +8,27 @@ export function cn(...inputs: ClassValue[]) {
 /* ---------------------------------------------------------------- currency */
 
 /**
- * Fabric is quoted per metre in INR. We always render the unit alongside the
- * number so a buyer never has to guess whether a price is per metre or per kg.
+ * Threadwyn quotes in USD. The mills are Indian, but B2B textile export is
+ * quoted FOB in dollars — this is the buyer's currency, not the mill's.
+ *
+ * One locale, one currency, one place. Every figure in the product goes
+ * through here, so supporting a second currency later is a change to this
+ * file rather than a sweep through fifty components.
  */
+const LOCALE = "en-US";
+const CURRENCY = "USD";
+
 export function formatMoney(value: number, opts: { compact?: boolean } = {}) {
-  if (opts.compact && value >= 100_000) {
-    return `₹${(value / 100_000).toFixed(value >= 1_000_000 ? 0 : 1)}L`;
+  if (opts.compact && value >= 1_000_000) {
+    return `$${(value / 1_000_000).toFixed(1)}M`;
   }
   if (opts.compact && value >= 1_000) {
-    return `₹${(value / 1_000).toFixed(value >= 10_000 ? 0 : 1)}k`;
+    return `$${(value / 1_000).toFixed(value >= 10_000 ? 0 : 1)}k`;
   }
-  return new Intl.NumberFormat("en-IN", {
+  return new Intl.NumberFormat(LOCALE, {
     style: "currency",
-    currency: "INR",
-    minimumFractionDigits: Number.isInteger(value) ? 0 : 2,
+    currency: CURRENCY,
+    minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   }).format(value);
 }
@@ -33,11 +40,11 @@ export function formatPerMetre(value: number) {
 /* ----------------------------------------------------------------- numbers */
 
 export function formatMetres(value: number) {
-  return `${new Intl.NumberFormat("en-IN").format(Math.round(value))} m`;
+  return `${new Intl.NumberFormat(LOCALE).format(Math.round(value))} m`;
 }
 
 export function formatNumber(value: number) {
-  return new Intl.NumberFormat("en-IN").format(value);
+  return new Intl.NumberFormat(LOCALE).format(value);
 }
 
 export function formatPercent(value: number, digits = 0) {
@@ -48,7 +55,7 @@ export function formatPercent(value: number, digits = 0) {
 
 export function formatDate(input: Date | string) {
   const d = typeof input === "string" ? new Date(input) : input;
-  return new Intl.DateTimeFormat("en-IN", {
+  return new Intl.DateTimeFormat(LOCALE, {
     day: "numeric",
     month: "short",
     year: "numeric",
@@ -57,7 +64,7 @@ export function formatDate(input: Date | string) {
 
 export function formatDateTime(input: Date | string) {
   const d = typeof input === "string" ? new Date(input) : input;
-  return new Intl.DateTimeFormat("en-IN", {
+  return new Intl.DateTimeFormat(LOCALE, {
     day: "numeric",
     month: "short",
     hour: "numeric",

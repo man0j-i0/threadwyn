@@ -52,6 +52,10 @@ const noopSubscribe = () => () => {};
 
 export function useVoice({
   onFinal,
+  // Deliberately not moved to en-US with the rest of the locales. This one
+  // selects an *acoustic* model, not a number format — the speakers are mill
+  // staff and sourcing teams in India, and en-IN recognises them noticeably
+  // better. Pricing being in dollars has no bearing on how a buyer sounds.
   lang = "en-IN",
 }: {
   onFinal: (transcript: string) => void;

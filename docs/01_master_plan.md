@@ -126,7 +126,7 @@ security boundary.
 1. **Onboarding** — a 12-field form is the worst first impression. Instead: a short conversation (typed or
    spoken) that extracts a structured profile. The extracted fields are shown as **editable chips** before
    saving. AI proposes, the user confirms. Nothing is written silently.
-2. **Natural-language search** — "breathable cotton for summer shirting under ₹400, at least 500m available"
+2. **Natural-language search** — "breathable cotton for summer shirting under $5, at least 500m available"
    → structured filter object → the *same* deterministic query path the filter sidebar uses. The AI translates
    intent into filters; it never invents products. The applied filters render as removable chips so the user
    can see exactly what the model decided.

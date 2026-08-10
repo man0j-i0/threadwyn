@@ -16,8 +16,13 @@ import { money } from "@/lib/serialize";
  *    so a buyer is never silently missing something they chose.
  */
 
-const FREE_SHIPPING_THRESHOLD = 100_000;
-const SHIPPING_FEE = 1_800;
+// USD, matching the catalogue. Freight on a bulk fabric order is really a
+// function of weight and lane, but a flat fee above a threshold is the honest
+// simplification for a prototype that does not integrate a carrier.
+const FREE_SHIPPING_THRESHOLD = 1_200;
+const SHIPPING_FEE = 25;
+// Export shipments are zero-rated for GST, so this stands in for the duties
+// and handling an importing buyer pays — see the label in the order summary.
 const TAX_RATE = 0.05;
 
 export async function getOrCreateCart(buyerId: string) {
@@ -57,7 +62,7 @@ export async function getCart(buyerId: string) {
     else if (item.product.status === "OUT_OF_STOCK" || item.product.stockMetres <= 0) {
       issues.push("Out of stock — the mill needs to weave a fresh lot.");
     } else if (item.quantityMetres > available) {
-      issues.push(`Only ${available.toLocaleString("en-IN")}m available in this colourway.`);
+      issues.push(`Only ${available.toLocaleString("en-US")}m available in this colourway.`);
     }
     if (item.quantityMetres < item.product.moqMetres) {
       issues.push(`Below this mill's ${item.product.moqMetres}m minimum.`);

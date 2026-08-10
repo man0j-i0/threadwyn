@@ -377,7 +377,7 @@ export async function getSupplierMetrics(supplierId: string) {
       .filter((r) => r.createdAt >= start && r.createdAt < end)
       .reduce((sum, r) => sum + Number(r.subtotal), 0);
     weeks.push({
-      label: end.toLocaleDateString("en-IN", { day: "numeric", month: "short" }),
+      label: end.toLocaleDateString("en-US", { day: "numeric", month: "short" }),
       value: money(value),
     });
   }

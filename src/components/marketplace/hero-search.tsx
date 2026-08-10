@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils";
 import { Spinner } from "@/components/ui/spinner";
 
 const SUGGESTIONS = [
-  "breathable cotton for summer shirting under ₹300",
+  "breathable cotton for summer shirting under $4",
   "heavy linen for unstructured jackets",
   "GOTS organic jersey, 200 gsm",
   "selvedge denim, 14oz",

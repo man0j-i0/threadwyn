@@ -305,7 +305,7 @@ export function CartView({ cart: initial }: { cart: SerializedCart }) {
                 value={cart.shippingFee === 0 ? "Free" : formatMoney(cart.shippingFee)}
                 muted={cart.shippingFee === 0}
               />
-              <SummaryRow label="GST (5%)" value={formatMoney(cart.tax)} />
+              <SummaryRow label="Duties & handling (5%)" value={formatMoney(cart.tax)} />
               <div className="border-t border-line pt-3">
                 <div className="flex items-baseline justify-between gap-3">
                   <dt className="text-[14px] font-medium text-ink">Total</dt>

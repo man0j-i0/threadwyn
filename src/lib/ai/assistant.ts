@@ -77,7 +77,7 @@ const TOOLS: ToolSchema[] = [
     function: {
       name: "search_fabrics",
       description:
-        "Search the Threadwyn catalogue. Use this for every product question. Prices are INR per metre; gsm is grams per square metre; stock and MOQ are in metres.",
+        "Search the Threadwyn catalogue. Use this for every product question. Prices are USD per metre; gsm is grams per square metre; stock and MOQ are in metres.",
       parameters: {
         type: "object",
         properties: {
@@ -183,7 +183,7 @@ function describeForModel(c: AssistantCitation) {
     `${c.weave.toLowerCase()}`,
     `${c.gsm}gsm`,
     `${c.widthCm}cm`,
-    `₹${c.price}/m`,
+    `$${c.price}/m`,
     `stock ${c.stockMetres}m`,
     `MOQ ${c.moqMetres}m`,
     `lead ${c.leadTimeDays}d`,
@@ -298,7 +298,7 @@ async function systemPrompt() {
 
 CATALOGUE
 - ${count} active fabrics across ${categories.length} categories: ${categories.map((c) => c.slug).join(", ")}
-- Prices run ₹${Math.floor(Number(priceRange._min.pricePerMetre ?? 0))}–₹${Math.ceil(Number(priceRange._max.pricePerMetre ?? 0))} per metre.
+- Prices run $${Number(priceRange._min.pricePerMetre ?? 0).toFixed(2)}–$${Number(priceRange._max.pricePerMetre ?? 0).toFixed(2)} per metre (USD, FOB).
 
 RULES
 1. Never invent a fabric, price, GSM, stock figure or supplier. Every product claim must come from a tool result in this conversation.
@@ -306,9 +306,9 @@ RULES
 3. Refer to fabrics by name. Never print a slug, an id or raw JSON to the user.
 4. Be concise: two to four sentences, or a short list. This is a working tool, not a chat companion.
 5. Give a reason with every recommendation, grounded in a spec — weight, weave, stock depth, MOQ or lead time.
-6. If the buyer's requirements conflict (say, luxury silk under ₹200/m), name the conflict instead of quietly dropping one.
+6. If the buyer's requirements conflict (say, luxury silk under $3/m), name the conflict instead of quietly dropping one.
 7. If a question is outside the catalogue — shipping, payment terms, custom dyeing — say Threadwyn does not cover it yet and suggest contacting the mill.
-8. Units: ₹ per metre, gsm for weight, cm for width, metres for stock and MOQ, days for lead time.`;
+8. Units: USD per metre, gsm for weight, cm for width, metres for stock and MOQ, days for lead time.`;
 }
 
 /* ------------------------------------------------------------- rules mode */
@@ -329,7 +329,7 @@ async function rulesReply(userMessage: string): Promise<AssistantReply> {
   if (citations.length === 0) {
     const relaxable =
       filters.priceMax != null
-        ? `the ₹${filters.priceMax}/m ceiling`
+        ? `the $${filters.priceMax}/m ceiling`
         : filters.stockMin != null
           ? `the ${filters.stockMin}m stock minimum`
           : filters.gsmMax != null
@@ -486,7 +486,7 @@ export async function askAboutProduct(slug: string, question: string): Promise<A
         role: "system",
         content: `Answer strictly from the JSON below. It is the complete record for this fabric.
 
-If the answer is not in the data, say so in one sentence and suggest asking the supplier — do NOT guess a value. Two to four sentences. Units: ₹/metre, gsm, cm, metres, days. Never print JSON, ids or slugs.
+If the answer is not in the data, say so in one sentence and suggest asking the supplier — do NOT guess a value. Two to four sentences. Units: USD/metre, gsm, cm, metres, days. Never print JSON, ids or slugs.
 
 FABRIC:
 ${facts}`,
@@ -520,7 +520,8 @@ type ProductRow = NonNullable<Awaited<ReturnType<typeof db.product.findUnique>>>
 function deterministicProductAnswer(question: string, p: ProductRow): string {
   const q = question.toLowerCase();
 
-  if (/\b(price|cost|rate|how much|₹|rupee)\b/.test(q)) {
+  // `$` is not a word character, so it cannot live inside the \b group.
+  if (/\b(price|cost|rate|how much|dollars?)\b/.test(q) || q.includes("$")) {
     return `${p.name} is ${formatMoney(Number(p.pricePerMetre))} per metre, with a minimum order of ${p.moqMetres}m — so the smallest order is ${formatMoney(Number(p.pricePerMetre) * p.moqMetres)}.`;
   }
   if (/\b(stock|available|availability|how many|quantity|metres|meters)\b/.test(q)) {

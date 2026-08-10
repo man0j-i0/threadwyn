@@ -261,8 +261,8 @@ async function main() {
       categoryInterest: ["linen", "silk-satin", "shirting"],
       preferredFabrics: ["linen", "silk", "cotton"],
       typicalOrderQty: "500-2000",
-      budgetMin: 200,
-      budgetMax: 900,
+      budgetMin: 3,
+      budgetMax: 11,
       notes: "Small-batch resort collections. Cares about natural fibres and certification.",
     },
     {
@@ -275,8 +275,8 @@ async function main() {
       categoryInterest: ["suiting", "shirting", "canvas-workwear"],
       preferredFabrics: ["polyester", "cotton", "blend"],
       typicalOrderQty: "10000-plus",
-      budgetMin: 100,
-      budgetMax: 400,
+      budgetMin: 2,
+      budgetMax: 5,
       notes: "Volume tenders. Optimises for repeatable shade matching and price.",
     },
   ];

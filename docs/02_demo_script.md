@@ -47,7 +47,7 @@ Keep scrolling into the analysis.
 
 Open the derivation `<details>` for one beat.
 
-> "And this is why it costs ₹486 a metre: this much yarn, spun this fine, on a loom running this slowly."
+> "And this is why it costs $5.70 a metre: this much yarn, spun this fine, on a loom running this slowly."
 
 **If asked why not a downloaded 3D model:** it would be one fabric, a licence, and an asset that can render
 the wrong cloth. Procedural runs on all sixty and is always correct.
@@ -58,7 +58,7 @@ the wrong cloth. Procedural runs on all sixty and is always correct.
 
 Go to the marketplace. Click the search bar.
 
-Type: **`breathable cotton for summer shirting under ₹300 with at least 2000m in stock`**
+Type: **`breathable cotton for summer shirting under $4 with at least 2000m in stock`**
 
 > "That becomes structured filters — and here's the part that matters."
 
@@ -182,5 +182,5 @@ transactional.
 
 **How long did it take?**
 One build. The seed is 60 fabrics with real mill specifications — GSM, composition, MOQ and lead times that
-an Indian mill would actually quote — because a marketplace demo full of "Product 1, ₹100" tells you nothing
+an Indian mill would actually quote — because a marketplace demo full of "Product 1, $1" tells you nothing
 about whether the filters do useful work.

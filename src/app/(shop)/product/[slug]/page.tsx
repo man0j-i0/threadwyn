@@ -28,7 +28,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
   return {
     title: product.name,
-    description: `${product.composition}, ${product.gsm} gsm, ${product.widthCm}cm wide. ₹${Number(product.pricePerMetre)}/m from ${product.supplier.businessName}. MOQ ${product.moqMetres}m, ${product.leadTimeDays}-day lead time.`,
+    description: `${product.composition}, ${product.gsm} gsm, ${product.widthCm}cm wide. $${Number(product.pricePerMetre).toFixed(2)}/m from ${product.supplier.businessName}. MOQ ${product.moqMetres}m, ${product.leadTimeDays}-day lead time.`,
     openGraph: { title: `${product.name} · Threadwyn`, description: product.description.slice(0, 200) },
   };
 }

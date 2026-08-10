@@ -727,7 +727,7 @@ no key and no network. `embed()` upgrades to a real sentence-transformer when
 sources must never be mixed, which is why switching requires a full re-embed.
 
 **Extraction resilience.** A 7B model gets the shape right and the types
-casually wrong. Field builders coerce delimited strings to arrays and `"₹800"`
+casually wrong. Field builders coerce delimited strings to arrays and `"$10"`
 to `800`; every field is `.catch(undefined)` so an unrescuable value drops
 itself rather than the whole draft. The rule pass then overrides anything it
 matched, and the user reviews every field before it saves.

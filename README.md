@@ -165,7 +165,7 @@ actual rows. **Everything below works with no key configured.**
 
 | Surface | What AI does | What it never does |
 |---|---|---|
-| Natural-language search | Turns "breathable cotton for summer shirting under ₹300" into structured filters | Get its own results page — it writes filters into the URL and the *same* deterministic query runs |
+| Natural-language search | Turns "breathable cotton for summer shirting under $4" into structured filters | Get its own results page — it writes filters into the URL and the *same* deterministic query runs |
 | Assistant (`⌘K`) | Tool-calling over `search_fabrics`, `get_fabric`, `compare_fabrics`, `find_similar` | Invent a product, price or stock figure; every claim comes from a tool result |
 | Product Q&A | Answers from that one product's row | Drift onto a neighbouring SKU, or guess a value that is not in the data |
 | Onboarding | Converts free-form answers into profile fields | Write anything — the draft is shown as editable fields and the user saves it |

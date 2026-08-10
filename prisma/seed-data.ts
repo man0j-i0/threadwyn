@@ -1,9 +1,12 @@
 /**
  * Catalogue seed. The specs here are realistic: GSM, widths, MOQs, lead times
- * and price-per-metre are all in the range you'd actually be quoted by an
- * Indian mill. That matters — a marketplace demo full of "Product 1, ₹100"
- * tells a judge nothing about whether the filters, comparison and AI grounding
- * do useful work.
+ * and price-per-metre are all in the range an Indian mill would actually quote.
+ *
+ * Prices are USD per metre, FOB — which is how these mills quote an export
+ * buyer, even though they invoice domestically in rupees. That matters: a
+ * marketplace demo full of "Product 1, $100" tells a judge nothing about
+ * whether the filters, comparison and AI grounding do useful work, and a
+ * poplin priced like silk tells a textile buyer you have never bought cloth.
  */
 
 export type Weave =
@@ -389,7 +392,7 @@ export const PRODUCTS: SeedProduct[] = [
     gsm: 120, widthCm: 150, finish: "Mercerised, sanforised", handFeel: "Crisp, dry, smooth",
     useCases: ["Formal shirts", "Blouses", "Uniform shirting"],
     sustainability: ["BCI Cotton", "OEKO-TEX Standard 100"],
-    price: 238, moq: 300, stock: 8400, leadTime: 12, featured: true,
+    price: 2.80, moq: 300, stock: 8400, leadTime: 12, featured: true,
     colors: ["optic", "sky", "powder", "navy", "charcoal", "blush"],
   },
   {
@@ -401,7 +404,7 @@ export const PRODUCTS: SeedProduct[] = [
     gsm: 150, widthCm: 150, finish: "Mercerised, pre-shrunk", handFeel: "Textured, substantial",
     useCases: ["Button-down shirts", "Casual shirting", "Overshirts"],
     sustainability: ["BCI Cotton"],
-    price: 276, moq: 300, stock: 5200, leadTime: 12, featured: true,
+    price: 3.25, moq: 300, stock: 5200, leadTime: 12, featured: true,
     colors: ["optic", "sky", "ecru", "navy", "sage", "wine"],
   },
   {
@@ -412,7 +415,7 @@ export const PRODUCTS: SeedProduct[] = [
     composition: "100% Cotton", fibres: ["cotton"], weave: "PLAIN",
     gsm: 130, widthCm: 148, finish: "Enzyme washed", handFeel: "Soft, slightly slubby",
     useCases: ["Casual shirts", "Dresses", "Workwear shirting"],
-    price: 254, moq: 300, stock: 3600, leadTime: 12,
+    price: 2.95, moq: 300, stock: 3600, leadTime: 12,
     colors: ["washIndigo", "indigo", "slate"],
   },
   {
@@ -423,7 +426,7 @@ export const PRODUCTS: SeedProduct[] = [
     composition: "100% Cotton", fibres: ["cotton"], weave: "DOBBY",
     gsm: 125, widthCm: 150, finish: "Mercerised, easy-care", handFeel: "Crisp with fine relief",
     useCases: ["Formal shirts", "Occasion shirting"],
-    price: 289, moq: 300, stock: 2400, leadTime: 14,
+    price: 3.40, moq: 300, stock: 2400, leadTime: 14,
     colors: ["optic", "ivory", "sky", "silver", "navy"],
   },
   {
@@ -434,7 +437,7 @@ export const PRODUCTS: SeedProduct[] = [
     composition: "100% Cotton", fibres: ["cotton"], weave: "PLAIN",
     gsm: 110, widthCm: 150, finish: "Mercerised", handFeel: "Light, cool, crisp",
     useCases: ["Summer shirts", "Resort shirting"],
-    price: 246, moq: 300, stock: 4100, leadTime: 12,
+    price: 2.90, moq: 300, stock: 4100, leadTime: 12,
     colors: ["sky", "powder", "sage", "blush", "silver"],
   },
   {
@@ -446,7 +449,7 @@ export const PRODUCTS: SeedProduct[] = [
     gsm: 115, widthCm: 145, finish: "Loom-state pucker, washed", handFeel: "Crinkled, airy",
     useCases: ["Summer shirts", "Suits (unstructured)", "Kidswear"],
     sustainability: ["BCI Cotton"],
-    price: 268, moq: 300, stock: 1900, leadTime: 14,
+    price: 3.15, moq: 300, stock: 1900, leadTime: 14,
     colors: ["sky", "optic", "navy", "clay"],
   },
   {
@@ -458,7 +461,7 @@ export const PRODUCTS: SeedProduct[] = [
     gsm: 145, widthCm: 145, finish: "Stone washed, softened", handFeel: "Dry, textured, relaxed",
     useCases: ["Summer shirts", "Overshirts", "Resortwear"],
     sustainability: ["European Flax", "OEKO-TEX Standard 100"],
-    price: 342, moq: 250, stock: 3100, leadTime: 16, featured: true,
+    price: 4.00, moq: 250, stock: 3100, leadTime: 16, featured: true,
     colors: ["natural", "optic", "sage", "terracotta", "navy", "olive"],
   },
 
@@ -471,7 +474,7 @@ export const PRODUCTS: SeedProduct[] = [
     composition: "100% Merino Wool (Super 110s)", fibres: ["wool"], weave: "TWILL",
     gsm: 240, widthCm: 150, finish: "Piece-dyed, decatised", handFeel: "Smooth, resilient, dry",
     useCases: ["Suits", "Blazers", "Trousers"],
-    price: 1180, compareAt: 1340, moq: 200, stock: 1600, leadTime: 14, featured: true,
+    price: 13.90, compareAt: 15.75, moq: 200, stock: 1600, leadTime: 14, featured: true,
     colors: ["charcoal", "navy", "midnight", "graphite", "slate"],
   },
   {
@@ -482,7 +485,7 @@ export const PRODUCTS: SeedProduct[] = [
     composition: "100% Wool", fibres: ["wool"], weave: "PLAIN",
     gsm: 190, widthCm: 150, finish: "Clear finish", handFeel: "Light, open, breathable",
     useCases: ["Summer suits", "Trousers", "Unstructured jackets"],
-    price: 985, moq: 200, stock: 980, leadTime: 14,
+    price: 11.60, moq: 200, stock: 980, leadTime: 14,
     colors: ["slate", "navy", "camel", "charcoal"],
   },
   {
@@ -493,7 +496,7 @@ export const PRODUCTS: SeedProduct[] = [
     composition: "65% Polyester / 35% Viscose", fibres: ["polyester", "viscose"], weave: "TWILL",
     gsm: 210, widthCm: 150, finish: "Heat set, calendered", handFeel: "Smooth, firm",
     useCases: ["Uniform suiting", "Institutional wear", "Volume tailoring"],
-    price: 312, moq: 400, stock: 12800, leadTime: 10,
+    price: 3.65, moq: 400, stock: 12800, leadTime: 10,
     colors: ["navy", "charcoal", "graphite", "midnight", "slate", "ink"],
   },
   {
@@ -504,7 +507,7 @@ export const PRODUCTS: SeedProduct[] = [
     composition: "70% Wool / 30% Polyester", fibres: ["wool", "polyester"], weave: "HERRINGBONE",
     gsm: 280, widthCm: 150, finish: "Milled, pressed", handFeel: "Dense, warm, structured",
     useCases: ["Winter jackets", "Overcoats", "Waistcoats"],
-    price: 742, moq: 200, stock: 720, leadTime: 16,
+    price: 8.75, moq: 200, stock: 720, leadTime: 16,
     colors: ["charcoal", "espresso", "forest", "graphite"],
   },
   {
@@ -515,7 +518,7 @@ export const PRODUCTS: SeedProduct[] = [
     composition: "80% Wool / 20% Polyester", fibres: ["wool", "polyester"], weave: "DOBBY",
     gsm: 250, widthCm: 150, finish: "Decatised", handFeel: "Firm with fine grain",
     useCases: ["Business suits", "Trousers"],
-    price: 826, moq: 200, stock: 540, leadTime: 16,
+    price: 9.70, moq: 200, stock: 540, leadTime: 16,
     colors: ["navy", "charcoal", "graphite"],
   },
   {
@@ -527,7 +530,7 @@ export const PRODUCTS: SeedProduct[] = [
     fibres: ["wool", "polyester", "elastane"], weave: "TWILL",
     gsm: 225, widthCm: 148, finish: "Heat set, decatised", handFeel: "Supple with give",
     useCases: ["Travel suits", "Trousers", "Blazers"],
-    price: 648, moq: 250, stock: 1450, leadTime: 14,
+    price: 7.60, moq: 250, stock: 1450, leadTime: 14,
     colors: ["navy", "charcoal", "midnight", "olive"],
   },
 
@@ -540,7 +543,7 @@ export const PRODUCTS: SeedProduct[] = [
     composition: "100% Cotton", fibres: ["cotton"], weave: "TWILL",
     gsm: 475, widthCm: 76, finish: "Raw, unsanforised", handFeel: "Rigid, dry, hairy",
     useCases: ["Premium jeans", "Jackets", "Heritage workwear"],
-    price: 895, moq: 400, stock: 2200, leadTime: 20, featured: true,
+    price: 10.50, moq: 400, stock: 2200, leadTime: 20, featured: true,
     colors: ["indigo", "ink"],
   },
   {
@@ -552,7 +555,7 @@ export const PRODUCTS: SeedProduct[] = [
     gsm: 407, widthCm: 152, finish: "Sanforised, skewed", handFeel: "Firm with recovery",
     useCases: ["Jeans", "Jeggings", "Denim skirts"],
     sustainability: ["OEKO-TEX Standard 100"],
-    price: 428, moq: 500, stock: 9600, leadTime: 18, featured: true,
+    price: 5.05, moq: 500, stock: 9600, leadTime: 18, featured: true,
     colors: ["indigo", "washIndigo", "ink", "charcoal"],
   },
   {
@@ -563,7 +566,7 @@ export const PRODUCTS: SeedProduct[] = [
     composition: "100% Cotton", fibres: ["cotton"], weave: "TWILL",
     gsm: 271, widthCm: 150, finish: "Sanforised, softened", handFeel: "Soft, fluid",
     useCases: ["Denim shirts", "Dresses", "Kidswear"],
-    price: 296, moq: 400, stock: 5400, leadTime: 16,
+    price: 3.50, moq: 400, stock: 5400, leadTime: 16,
     colors: ["washIndigo", "indigo", "ecru"],
   },
   {
@@ -575,7 +578,7 @@ export const PRODUCTS: SeedProduct[] = [
     gsm: 373, widthCm: 152, finish: "Sanforised, PFD", handFeel: "Crisp, dry",
     useCases: ["Garment-dye programmes", "Printed denim", "Workwear"],
     sustainability: ["ZDHC Compliant", "Low-water process"],
-    price: 342, moq: 500, stock: 3300, leadTime: 16,
+    price: 4.00, moq: 500, stock: 3300, leadTime: 16,
     colors: ["ecru", "natural"],
   },
   {
@@ -586,7 +589,7 @@ export const PRODUCTS: SeedProduct[] = [
     composition: "99% Cotton / 1% Elastane", fibres: ["cotton", "elastane"], weave: "TWILL",
     gsm: 407, widthCm: 148, finish: "PU coated face", handFeel: "Smooth, slightly waxy",
     useCases: ["Fashion jeans", "Jackets"],
-    price: 512, moq: 400, stock: 1100, leadTime: 20,
+    price: 6.00, moq: 400, stock: 1100, leadTime: 20,
     colors: ["ink", "charcoal"],
   },
 
@@ -600,7 +603,7 @@ export const PRODUCTS: SeedProduct[] = [
     gsm: 165, widthCm: 145, finish: "Softened, pre-shrunk", handFeel: "Dry, crisp, cooling",
     useCases: ["Shirts", "Trousers", "Dresses", "Resortwear"],
     sustainability: ["European Flax", "GOTS", "OEKO-TEX Standard 100"],
-    price: 486, moq: 250, stock: 4700, leadTime: 16, featured: true,
+    price: 5.70, moq: 250, stock: 4700, leadTime: 16, featured: true,
     colors: ["natural", "optic", "sand", "sage", "terracotta", "navy", "olive", "blush"],
   },
   {
@@ -612,7 +615,7 @@ export const PRODUCTS: SeedProduct[] = [
     gsm: 240, widthCm: 145, finish: "Garment washed", handFeel: "Substantial, softening",
     useCases: ["Unstructured jackets", "Trousers", "Aprons"],
     sustainability: ["European Flax"],
-    price: 592, moq: 250, stock: 1800, leadTime: 18,
+    price: 6.95, moq: 250, stock: 1800, leadTime: 18,
     colors: ["natural", "olive", "espresso", "slate", "rust"],
   },
   {
@@ -624,7 +627,7 @@ export const PRODUCTS: SeedProduct[] = [
     gsm: 120, widthCm: 140, finish: "Enzyme washed", handFeel: "Airy, textured, relaxed",
     useCases: ["Summer dresses", "Scarves", "Curtains"],
     sustainability: ["European Flax", "GOTS"],
-    price: 424, moq: 250, stock: 2600, leadTime: 16,
+    price: 4.95, moq: 250, stock: 2600, leadTime: 16,
     colors: ["natural", "optic", "blush", "sky", "sage"],
   },
   {
@@ -635,7 +638,7 @@ export const PRODUCTS: SeedProduct[] = [
     composition: "60% Linen / 40% Viscose", fibres: ["linen", "viscose"], weave: "PLAIN",
     gsm: 155, widthCm: 145, finish: "Softened", handFeel: "Fluid, cool, smooth",
     useCases: ["Dresses", "Wide trousers", "Blouses"],
-    price: 396, moq: 250, stock: 3400, leadTime: 16,
+    price: 4.65, moq: 250, stock: 3400, leadTime: 16,
     colors: ["wine", "forest", "navy", "aubergine", "clay", "ink"],
   },
   {
@@ -647,7 +650,7 @@ export const PRODUCTS: SeedProduct[] = [
     gsm: 180, widthCm: 108, finish: "Loom state, washed", handFeel: "Rustic, dense, alive",
     useCases: ["Artisanal apparel", "Table linen", "Cushions"],
     sustainability: ["Handloom Mark", "Fairtrade"],
-    price: 645, moq: 50, stock: 620, leadTime: 24,
+    price: 7.55, moq: 50, stock: 620, leadTime: 24,
     colors: ["natural", "indigo", "rust", "moss"],
   },
 
@@ -661,7 +664,7 @@ export const PRODUCTS: SeedProduct[] = [
     gsm: 71, widthCm: 114, finish: "Degummed, calendered", handFeel: "Liquid, cool, lustrous",
     useCases: ["Eveningwear", "Bridal", "Premium lining", "Sleepwear"],
     sustainability: ["Silk Mark"],
-    price: 1240, moq: 30, stock: 1400, leadTime: 6, featured: true,
+    price: 14.60, moq: 30, stock: 1400, leadTime: 6, featured: true,
     colors: ["ivory", "champagne", "blush", "wine", "midnight", "emerald", "ink", "rose"],
   },
   {
@@ -673,7 +676,7 @@ export const PRODUCTS: SeedProduct[] = [
     gsm: 90, widthCm: 110, finish: "Degummed", handFeel: "Crisp, papery, structured",
     useCases: ["Bridal", "Structured dresses", "Cushions"],
     sustainability: ["Silk Mark"],
-    price: 968, moq: 30, stock: 980, leadTime: 6,
+    price: 11.40, moq: 30, stock: 980, leadTime: 6,
     colors: ["ivory", "gold", "wine", "teal", "aubergine", "brick"],
   },
   {
@@ -685,7 +688,7 @@ export const PRODUCTS: SeedProduct[] = [
     gsm: 62, widthCm: 114, finish: "Degummed, washed", handFeel: "Soft, pebbled, fluid",
     useCases: ["Blouses", "Dresses", "Scarves"],
     sustainability: ["Silk Mark"],
-    price: 1085, moq: 30, stock: 760, leadTime: 6,
+    price: 12.75, moq: 30, stock: 760, leadTime: 6,
     colors: ["ivory", "blush", "navy", "ink", "sage", "rose"],
   },
   {
@@ -696,7 +699,7 @@ export const PRODUCTS: SeedProduct[] = [
     composition: "100% Polyester", fibres: ["polyester"], weave: "SATIN",
     gsm: 95, widthCm: 150, finish: "Heat set, calendered", handFeel: "Slippery, high-shine",
     useCases: ["Occasionwear", "Costume", "Lining", "Drapery"],
-    price: 178, moq: 100, stock: 14200, leadTime: 5,
+    price: 2.10, moq: 100, stock: 14200, leadTime: 5,
     colors: ["ivory", "blush", "wine", "emerald", "midnight", "ink", "lilac", "gold"],
   },
   {
@@ -708,7 +711,7 @@ export const PRODUCTS: SeedProduct[] = [
     gsm: 165, widthCm: 112, finish: "Loom state", handFeel: "Rich, structured, textured",
     useCases: ["Bridal", "Occasionwear", "Statement upholstery"],
     sustainability: ["Handloom Mark", "GI Banaras Brocade"],
-    price: 2450, moq: 40, stock: 320, leadTime: 28, featured: true,
+    price: 28.80, moq: 40, stock: 320, leadTime: 28, featured: true,
     colors: ["wine", "gold", "emerald", "midnight", "oxblood"],
   },
   {
@@ -720,7 +723,7 @@ export const PRODUCTS: SeedProduct[] = [
     gsm: 140, widthCm: 110, finish: "Loom state, pressed", handFeel: "Smooth face, dense",
     useCases: ["Occasionwear", "Jackets", "Cushions"],
     sustainability: ["Handloom Mark", "Silk Mark"],
-    price: 1780, moq: 40, stock: 260, leadTime: 28,
+    price: 20.95, moq: 40, stock: 260, leadTime: 28,
     colors: ["teal", "wine", "champagne", "aubergine"],
   },
 
@@ -734,7 +737,7 @@ export const PRODUCTS: SeedProduct[] = [
     gsm: 180, widthCm: 180, finish: "Bio-washed, compacted", handFeel: "Soft, smooth, light",
     useCases: ["T-shirts", "Basics", "Kidswear"],
     sustainability: ["OEKO-TEX Standard 100"],
-    price: 312, moq: 150, stock: 18400, leadTime: 8, featured: true,
+    price: 3.65, moq: 150, stock: 18400, leadTime: 8, featured: true,
     colors: ["optic", "ink", "charcoal", "navy", "sage", "terracotta", "blush", "silver"],
   },
   {
@@ -745,7 +748,7 @@ export const PRODUCTS: SeedProduct[] = [
     composition: "100% Cotton", fibres: ["cotton"], weave: "JERSEY",
     gsm: 220, widthCm: 175, finish: "Compacted, softened", handFeel: "Dense, smooth, stable",
     useCases: ["Polos", "Dresses", "Babywear"],
-    price: 368, moq: 150, stock: 7200, leadTime: 8,
+    price: 4.35, moq: 150, stock: 7200, leadTime: 8,
     colors: ["optic", "navy", "ink", "powder", "blush"],
   },
   {
@@ -756,7 +759,7 @@ export const PRODUCTS: SeedProduct[] = [
     composition: "95% Cotton / 5% Elastane", fibres: ["cotton", "elastane"], weave: "RIB",
     gsm: 240, widthCm: 90, finish: "Heat set, compacted", handFeel: "Springy, elastic",
     useCases: ["Cuffs & trims", "Fitted tops", "Loungewear"],
-    price: 398, moq: 150, stock: 4900, leadTime: 8,
+    price: 4.70, moq: 150, stock: 4900, leadTime: 8,
     colors: ["optic", "ink", "charcoal", "navy", "wine", "moss"],
   },
   {
@@ -767,7 +770,7 @@ export const PRODUCTS: SeedProduct[] = [
     composition: "80% Cotton / 20% Polyester", fibres: ["cotton", "polyester"], weave: "JERSEY",
     gsm: 300, widthCm: 180, finish: "Compacted", handFeel: "Plush reverse, smooth face",
     useCases: ["Sweatshirts", "Joggers", "Hoodies"],
-    price: 452, moq: 200, stock: 6100, leadTime: 9, featured: true,
+    price: 5.30, moq: 200, stock: 6100, leadTime: 9, featured: true,
     colors: ["silver", "charcoal", "ink", "navy", "sage", "clay", "optic"],
   },
   {
@@ -778,7 +781,7 @@ export const PRODUCTS: SeedProduct[] = [
     composition: "100% Cotton", fibres: ["cotton"], weave: "DOBBY",
     gsm: 200, widthCm: 175, finish: "Bio-washed, compacted", handFeel: "Textured, breathable",
     useCases: ["Polo shirts", "Uniform knitwear"],
-    price: 344, moq: 150, stock: 8800, leadTime: 8,
+    price: 4.05, moq: 150, stock: 8800, leadTime: 8,
     colors: ["optic", "navy", "ink", "forest", "wine", "silver"],
   },
   {
@@ -789,7 +792,7 @@ export const PRODUCTS: SeedProduct[] = [
     composition: "100% Cotton", fibres: ["cotton"], weave: "JERSEY",
     gsm: 170, widthCm: 180, finish: "Garment washed", handFeel: "Textured, soft, dry",
     useCases: ["Premium tees", "Casual knitwear"],
-    price: 356, moq: 150, stock: 3200, leadTime: 9,
+    price: 4.20, moq: 150, stock: 3200, leadTime: 9,
     colors: ["ecru", "sand", "moss", "slate", "clay"],
   },
 
@@ -804,7 +807,7 @@ export const PRODUCTS: SeedProduct[] = [
     gsm: 190, widthCm: 155, finish: "Wicking, anti-odour", handFeel: "Smooth, cool, elastic",
     useCases: ["Activewear", "Leggings", "Base layers"],
     sustainability: ["GRS Recycled", "OEKO-TEX Standard 100"],
-    price: 478, moq: 200, stock: 5600, leadTime: 10, featured: true,
+    price: 5.60, moq: 200, stock: 5600, leadTime: 10, featured: true,
     colors: ["ink", "charcoal", "teal", "navy", "aubergine"],
   },
   {
@@ -815,7 +818,7 @@ export const PRODUCTS: SeedProduct[] = [
     composition: "80% Nylon / 20% Elastane", fibres: ["nylon", "elastane"], weave: "JERSEY",
     gsm: 130, widthCm: 150, finish: "Heat set", handFeel: "Light, springy, open",
     useCases: ["Activewear panels", "Linings", "Shapewear"],
-    price: 386, moq: 200, stock: 3900, leadTime: 10,
+    price: 4.55, moq: 200, stock: 3900, leadTime: 10,
     colors: ["ink", "optic", "charcoal", "navy"],
   },
   {
@@ -826,7 +829,7 @@ export const PRODUCTS: SeedProduct[] = [
     composition: "100% Polyester", fibres: ["polyester"], weave: "JERSEY",
     gsm: 260, widthCm: 160, finish: "Brushed reverse, anti-pill", handFeel: "Soft, warm, dry",
     useCases: ["Mid layers", "Track jackets", "Blankets"],
-    price: 298, moq: 200, stock: 7400, leadTime: 9,
+    price: 3.55, moq: 200, stock: 7400, leadTime: 9,
     colors: ["charcoal", "ink", "forest", "navy", "silver"],
   },
   {
@@ -837,7 +840,7 @@ export const PRODUCTS: SeedProduct[] = [
     composition: "86% Polyester / 14% Elastane", fibres: ["polyester", "elastane"], weave: "TWILL",
     gsm: 175, widthCm: 150, finish: "DWR, heat set", handFeel: "Smooth, dry, elastic",
     useCases: ["Technical trousers", "Outdoor shirts", "Golf apparel"],
-    price: 542, moq: 250, stock: 2800, leadTime: 12,
+    price: 6.40, moq: 250, stock: 2800, leadTime: 12,
     colors: ["ink", "olive", "charcoal", "navy", "slate"],
   },
 
@@ -851,7 +854,7 @@ export const PRODUCTS: SeedProduct[] = [
     gsm: 150, widthCm: 100, finish: "Loom state, washed", handFeel: "Textured, breathable, alive",
     useCases: ["Kurtas", "Shirts", "Artisanal apparel"],
     sustainability: ["Handloom Mark", "Fairtrade", "Low-energy process"],
-    price: 385, moq: 50, stock: 1450, leadTime: 24, featured: true,
+    price: 4.50, moq: 50, stock: 1450, leadTime: 24, featured: true,
     colors: ["natural", "indigo", "optic", "rust", "moss", "saffron"],
   },
   {
@@ -863,7 +866,7 @@ export const PRODUCTS: SeedProduct[] = [
     gsm: 180, widthCm: 100, finish: "Loom state", handFeel: "Dense, textured, structured",
     useCases: ["Stoles", "Jackets", "Cushions", "Wall panels"],
     sustainability: ["Handloom Mark", "GI Kutch Weaving", "Fairtrade"],
-    price: 720, moq: 50, stock: 480, leadTime: 26,
+    price: 8.45, moq: 50, stock: 480, leadTime: 26,
     colors: ["natural", "indigo", "oxblood", "espresso"],
   },
   {
@@ -875,7 +878,7 @@ export const PRODUCTS: SeedProduct[] = [
     gsm: 160, widthCm: 108, finish: "Washed", handFeel: "Soft, matte, textured",
     useCases: ["Dresses", "Shirts", "Home furnishing"],
     sustainability: ["Handloom Mark", "Fairtrade"],
-    price: 545, moq: 50, stock: 690, leadTime: 24,
+    price: 6.45, moq: 50, stock: 690, leadTime: 24,
     colors: ["indigo", "rust", "moss", "natural"],
   },
   {
@@ -887,7 +890,7 @@ export const PRODUCTS: SeedProduct[] = [
     gsm: 260, widthCm: 100, finish: "Loom state", handFeel: "Warm, rustic, springy",
     useCases: ["Jackets", "Shawls", "Throws"],
     sustainability: ["Handloom Mark", "Fairtrade"],
-    price: 890, moq: 50, stock: 240, leadTime: 28,
+    price: 10.45, moq: 50, stock: 240, leadTime: 28,
     colors: ["natural", "espresso", "moss", "charcoal"],
   },
 
@@ -900,7 +903,7 @@ export const PRODUCTS: SeedProduct[] = [
     composition: "100% Cotton", fibres: ["cotton"], weave: "CANVAS",
     gsm: 400, widthCm: 140, finish: "Stain-resist treated", handFeel: "Firm, dense, dry",
     useCases: ["Sofas", "Armchairs", "Cushions", "Headboards"],
-    price: 685, moq: 60, stock: 1200, leadTime: 20,
+    price: 8.05, moq: 60, stock: 1200, leadTime: 20,
     colors: ["natural", "slate", "moss", "clay", "charcoal", "teal"],
   },
   {
@@ -911,7 +914,7 @@ export const PRODUCTS: SeedProduct[] = [
     composition: "100% Cotton", fibres: ["cotton"], weave: "PLAIN",
     gsm: 340, widthCm: 140, finish: "Pile cut, sheared", handFeel: "Plush, dense, directional",
     useCases: ["Upholstery", "Curtains", "Occasion jackets"],
-    price: 940, moq: 40, stock: 780, leadTime: 22, featured: true,
+    price: 11.05, moq: 40, stock: 780, leadTime: 22, featured: true,
     colors: ["emerald", "wine", "midnight", "oxblood", "espresso", "teal"],
   },
   {
@@ -922,7 +925,7 @@ export const PRODUCTS: SeedProduct[] = [
     composition: "55% Linen / 45% Cotton", fibres: ["linen", "cotton"], weave: "DOBBY",
     gsm: 380, widthCm: 140, finish: "Backed, stain-resist", handFeel: "Soft pile, substantial",
     useCases: ["Sofas", "Cushions", "Curtains"],
-    price: 810, moq: 60, stock: 640, leadTime: 20,
+    price: 9.50, moq: 60, stock: 640, leadTime: 20,
     colors: ["sand", "sage", "slate", "clay", "graphite"],
   },
 
@@ -935,7 +938,7 @@ export const PRODUCTS: SeedProduct[] = [
     composition: "100% Cotton", fibres: ["cotton"], weave: "CANVAS",
     gsm: 340, widthCm: 152, finish: "Sanforised", handFeel: "Stiff, dry, hard-wearing",
     useCases: ["Bags", "Aprons", "Workwear", "Covers"],
-    price: 268, moq: 300, stock: 8900, leadTime: 14,
+    price: 3.15, moq: 300, stock: 8900, leadTime: 14,
     colors: ["natural", "olive", "sand", "charcoal", "ink"],
   },
   {
@@ -946,7 +949,7 @@ export const PRODUCTS: SeedProduct[] = [
     composition: "100% Cotton (wax finish)", fibres: ["cotton"], weave: "CANVAS",
     gsm: 380, widthCm: 145, finish: "Paraffin wax impregnated", handFeel: "Waxy, firm, weathering",
     useCases: ["Field jackets", "Bags", "Outdoor gear"],
-    price: 620, moq: 200, stock: 1600, leadTime: 18, featured: true,
+    price: 7.30, moq: 200, stock: 1600, leadTime: 18, featured: true,
     colors: ["olive", "tobacco", "espresso", "charcoal"],
   },
   {
@@ -957,7 +960,7 @@ export const PRODUCTS: SeedProduct[] = [
     composition: "100% Cotton", fibres: ["cotton"], weave: "PLAIN",
     gsm: 210, widthCm: 150, finish: "Sanforised, DWR", handFeel: "Crisp, light, gridded",
     useCases: ["Cargo trousers", "Field shirts", "Bags"],
-    price: 312, moq: 300, stock: 4200, leadTime: 14,
+    price: 3.65, moq: 300, stock: 4200, leadTime: 14,
     colors: ["olive", "sand", "charcoal", "ink", "moss"],
   },
   {
@@ -968,7 +971,7 @@ export const PRODUCTS: SeedProduct[] = [
     composition: "100% Cotton", fibres: ["cotton"], weave: "HERRINGBONE",
     gsm: 260, widthCm: 150, finish: "Sanforised, softened", handFeel: "Substantial, textured",
     useCases: ["Chore coats", "Trousers", "Overalls"],
-    price: 336, moq: 300, stock: 2700, leadTime: 14,
+    price: 3.95, moq: 300, stock: 2700, leadTime: 14,
     colors: ["ecru", "olive", "slate", "espresso"],
   },
 
@@ -982,7 +985,7 @@ export const PRODUCTS: SeedProduct[] = [
     gsm: 78, widthCm: 140, finish: "Calendered", handFeel: "Cool, slippery, breathable",
     useCases: ["Jacket lining", "Trouser lining", "Dress lining"],
     sustainability: ["OEKO-TEX Standard 100"],
-    price: 264, moq: 100, stock: 6800, leadTime: 6,
+    price: 3.10, moq: 100, stock: 6800, leadTime: 6,
     colors: ["ink", "charcoal", "navy", "ivory", "espresso", "wine"],
   },
   {
@@ -993,7 +996,7 @@ export const PRODUCTS: SeedProduct[] = [
     composition: "100% Viscose", fibres: ["viscose"], weave: "TWILL",
     gsm: 90, widthCm: 145, finish: "Calendered", handFeel: "Smooth, soft, cool",
     useCases: ["Jacket lining", "Skirt lining"],
-    price: 148, moq: 200, stock: 11400, leadTime: 8,
+    price: 1.75, moq: 200, stock: 11400, leadTime: 8,
     colors: ["ink", "navy", "charcoal", "ivory", "silver"],
   },
   {
@@ -1004,7 +1007,7 @@ export const PRODUCTS: SeedProduct[] = [
     composition: "100% Cotton", fibres: ["cotton"], weave: "PLAIN",
     gsm: 120, widthCm: 150, finish: "Sanforised", handFeel: "Crisp, thin, tough",
     useCases: ["Pocket bags", "Waistband curtain"],
-    price: 132, moq: 300, stock: 9200, leadTime: 10,
+    price: 1.55, moq: 300, stock: 9200, leadTime: 10,
     colors: ["optic", "ecru", "silver"],
   },
 
@@ -1018,7 +1021,7 @@ export const PRODUCTS: SeedProduct[] = [
     gsm: 62, widthCm: 145, finish: "Mercerised, softened", handFeel: "Sheer, crisp, airy",
     useCases: ["Summer dresses", "Layering", "Curtains", "Dupattas"],
     sustainability: ["BCI Cotton"],
-    price: 196, moq: 300, stock: 6300, leadTime: 12,
+    price: 2.30, moq: 300, stock: 6300, leadTime: 12,
     colors: ["optic", "ivory", "blush", "sky", "sage", "lilac"],
   },
   {
@@ -1030,7 +1033,7 @@ export const PRODUCTS: SeedProduct[] = [
     gsm: 40, widthCm: 110, finish: "Degummed, sized", handFeel: "Crisp, papery, transparent",
     useCases: ["Bridal", "Interlining", "Structured overlays"],
     sustainability: ["Silk Mark"],
-    price: 745, moq: 30, stock: 540, leadTime: 6,
+    price: 8.80, moq: 30, stock: 540, leadTime: 6,
     colors: ["ivory", "blush", "champagne", "sky"],
   },
   {
@@ -1042,7 +1045,7 @@ export const PRODUCTS: SeedProduct[] = [
     gsm: 95, widthCm: 280, finish: "Washed", handFeel: "Dry, textured, translucent",
     useCases: ["Curtains", "Room dividers", "Layered apparel"],
     sustainability: ["European Flax", "OEKO-TEX Standard 100"],
-    price: 452, moq: 100, stock: 2100, leadTime: 16,
+    price: 5.30, moq: 100, stock: 2100, leadTime: 16,
     colors: ["natural", "optic", "sand"],
   },
 
@@ -1056,7 +1059,7 @@ export const PRODUCTS: SeedProduct[] = [
     gsm: 105, widthCm: 150, finish: "Mercerised, singed", handFeel: "Silken, cool, very fine",
     useCases: ["Luxury shirting", "Bespoke tailoring"],
     sustainability: ["OEKO-TEX Standard 100"],
-    price: 985, moq: 200, stock: 140, leadTime: 26,
+    price: 11.60, moq: 200, stock: 140, leadTime: 26,
     colors: ["optic", "ivory", "sky"],
   },
   {
@@ -1068,7 +1071,7 @@ export const PRODUCTS: SeedProduct[] = [
     gsm: 200, widthCm: 180, finish: "Bio-washed, undyed", handFeel: "Soft, natural, dry",
     useCases: ["Babywear", "Premium tees", "Sleepwear"],
     sustainability: ["GOTS", "OEKO-TEX Standard 100"],
-    price: 425, moq: 200, stock: 0, leadTime: 14, status: "OUT_OF_STOCK",
+    price: 5.00, moq: 200, stock: 0, leadTime: 14, status: "OUT_OF_STOCK",
     colors: ["natural", "ecru"],
   },
   {
@@ -1080,7 +1083,7 @@ export const PRODUCTS: SeedProduct[] = [
     gsm: 85, widthCm: 110, finish: "Loom state", handFeel: "Weightless, shimmering, delicate",
     useCases: ["Bridal overlays", "Dupattas", "Occasionwear"],
     sustainability: ["Handloom Mark", "Silk Mark"],
-    price: 1980, moq: 40, stock: 95, leadTime: 30,
+    price: 23.30, moq: 40, stock: 95, leadTime: 30,
     colors: ["gold", "champagne", "blush", "ivory"],
   },
   {
@@ -1092,7 +1095,7 @@ export const PRODUCTS: SeedProduct[] = [
     gsm: 200, widthCm: 145, finish: "In development", handFeel: "Dry, structured",
     useCases: ["Jackets", "Trousers"],
     sustainability: ["European Flax"],
-    price: 560, moq: 250, stock: 0, leadTime: 30, status: "DRAFT",
+    price: 6.60, moq: 250, stock: 0, leadTime: 30, status: "DRAFT",
     colors: ["natural", "slate"],
   },
 ];
