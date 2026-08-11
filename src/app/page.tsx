@@ -2,9 +2,7 @@ import {
   ArrowRight,
   ArrowsLeftRight,
   Certificate,
-  ChatCircleDots,
   ClipboardText,
-  Microphone,
   Package,
   Ruler,
   SlidersHorizontal,
@@ -149,10 +147,12 @@ export default async function LandingPage() {
               </h1>
 
               <Reveal delay={0.5}>
-                <p className="mt-6 max-w-xl text-[16.5px] leading-relaxed text-pretty text-muted">
-                  Threadwyn puts {formatNumber(productCount)} live fabrics from {millCount} verified Indian mills
-                  behind one search. Compare on GSM, composition, MOQ and lead time — not on how well a
-                  supplier photographs their cloth.
+                <p className="mt-6 max-w-lg text-[16.5px] leading-relaxed text-pretty text-muted">
+                  {formatNumber(productCount)} live fabrics from {millCount} verified Indian mills.
+                  Compare them by what actually matters.
+                </p>
+                <p className="mt-2.5 max-w-lg text-[15px] leading-relaxed text-pretty text-subtle">
+                  GSM, composition, MOQ and lead time, all in one place.
                 </p>
               </Reveal>
 
@@ -216,8 +216,8 @@ export default async function LandingPage() {
           <Reveal>
             <SectionHeading
               eyebrow="Browse by construction"
-              title="Twelve categories, sorted the way a sourcing team thinks"
-              description="Not by season or trend — by what the cloth is and what it can take."
+              title="Find the right fabric for the job."
+              description="Explore fabrics by weave, weight and performance."
               action={
                 <ButtonLink
                   href="/marketplace"
@@ -253,8 +253,8 @@ export default async function LandingPage() {
             <Reveal>
               <SectionHeading
                 eyebrow="Featured this week"
-                title="Cloth the mills are backing"
-                description="Every swatch below is rendered from that fabric's actual weave, weight and dyed colourway — so the colour you see is the colour that ships."
+                title="Fabrics worth a closer look"
+                description="Explore standout fabrics from verified mills."
               />
             </Reveal>
 
@@ -279,57 +279,6 @@ export default async function LandingPage() {
           </div>
         </section>
 
-        {/* =================================================================== AI */}
-        <section className="mx-auto max-w-[1400px] px-4 py-20 sm:px-6 lg:px-10 lg:py-28">
-          <div className="grid gap-14 lg:grid-cols-[0.95fr_1.05fr] lg:items-center lg:gap-16">
-            <Reveal>
-              <p className="eyebrow text-accent">The assistant</p>
-              <h2 className="font-display mt-4 text-3xl leading-[1.08] font-medium text-balance text-ink sm:text-[2.75rem]">
-                It translates what you said into filters you can see and undo.
-              </h2>
-              <p className="mt-5 text-[15.5px] leading-relaxed text-pretty text-muted">
-                Ask in plain English or just talk. Threadwyn turns the request into structured filters, runs the
-                same deterministic query the sidebar uses, and shows you exactly which constraints it applied.
-                Disagree with one? Remove the chip. The AI proposes; you decide.
-              </p>
-
-              <ul className="mt-8 space-y-4">
-                {[
-                  {
-                    icon: <ChatCircleDots size={17} weight="light" />,
-                    title: "Grounded in the catalogue",
-                    body: "Answers cite real products and real specs. If the data doesn't say it, the assistant says so.",
-                  },
-                  {
-                    icon: <Microphone size={17} weight="light" />,
-                    title: "Voice, when your hands are on cloth",
-                    body: "Push-to-talk with a live transcript. Same assistant, different input.",
-                  },
-                  {
-                    icon: <ArrowsLeftRight size={17} weight="light" />,
-                    title: "Comparison that reads like a spec sheet",
-                    body: "Side-by-side on GSM, composition, MOQ, lead time and price — plus which to pick when.",
-                  },
-                ].map((f) => (
-                  <li key={f.title} className="flex gap-3.5">
-                    <span className="mt-0.5 grid size-9 shrink-0 place-items-center rounded-full border border-brand-line bg-brand-soft text-brand-ink">
-                      {f.icon}
-                    </span>
-                    <span>
-                      <span className="block text-[14px] font-medium text-ink">{f.title}</span>
-                      <span className="mt-1 block text-[13.5px] leading-relaxed text-muted">{f.body}</span>
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            </Reveal>
-
-            <Reveal delay={0.12} y={26}>
-              <AssistantPreview />
-            </Reveal>
-          </div>
-        </section>
-
         {/* ========================================================= HOW IT WORKS */}
         <section className="border-t border-line bg-canvas-veil/50">
           <div className="mx-auto max-w-[1400px] px-4 py-20 sm:px-6 lg:px-10 lg:py-28">
@@ -337,8 +286,8 @@ export default async function LandingPage() {
               <SectionHeading
                 align="center"
                 eyebrow="Both sides of the counter"
-                title="One catalogue, two jobs to be done"
-                description="Buyers need to decide faster. Suppliers need fewer emails. The same data serves both."
+                title="One catalogue. Two sides."
+                description="Buyers source faster. Suppliers manage orders in one place."
               />
             </Reveal>
 
@@ -346,12 +295,12 @@ export default async function LandingPage() {
               <Reveal>
                 <RoleCard
                   role="For buyers"
-                  title="From a vague brief to a placed order"
+                  title="From brief to order"
                   steps={[
-                    { icon: <SlidersHorizontal size={15} weight="light" />, text: "Search or filter down to a shortlist" },
-                    { icon: <ArrowsLeftRight size={15} weight="light" />, text: "Compare candidates on the specs that matter" },
-                    { icon: <Ruler size={15} weight="light" />, text: "Add by the metre against each mill's MOQ" },
-                    { icon: <Package size={15} weight="light" />, text: "Track each mill's half of the order separately" },
+                    { icon: <SlidersHorizontal size={15} weight="light" />, text: "Search and filter fabrics" },
+                    { icon: <ArrowsLeftRight size={15} weight="light" />, text: "Compare key specifications" },
+                    { icon: <Ruler size={15} weight="light" />, text: "Order by each mill's MOQ" },
+                    { icon: <Package size={15} weight="light" />, text: "Track your orders" },
                   ]}
                   href="/register?role=buyer"
                   cta="Start sourcing"
@@ -360,12 +309,12 @@ export default async function LandingPage() {
               <Reveal delay={0.1}>
                 <RoleCard
                   role="For suppliers"
-                  title="A console instead of an inbox"
+                  title="From listing to order"
                   steps={[
-                    { icon: <ClipboardText size={15} weight="light" />, text: "Set up your mill by talking, not form-filling" },
-                    { icon: <Storefront size={15} weight="light" />, text: "List cloth with the specs buyers filter on" },
-                    { icon: <Package size={15} weight="light" />, text: "Take orders with stock checked automatically" },
-                    { icon: <Certificate size={15} weight="light" />, text: "Move each order through a clear status ladder" },
+                    { icon: <ClipboardText size={15} weight="light" />, text: "Set up your mill" },
+                    { icon: <Storefront size={15} weight="light" />, text: "List fabrics with key specs" },
+                    { icon: <Package size={15} weight="light" />, text: "Manage stock and orders" },
+                    { icon: <Certificate size={15} weight="light" />, text: "Track order status" },
                   ]}
                   href="/register?role=supplier"
                   cta="List your mill"
@@ -385,10 +334,10 @@ export default async function LandingPage() {
               </div>
               <p className="eyebrow text-accent">Ready when you are</p>
               <h2 className="font-display mx-auto mt-4 max-w-2xl text-3xl leading-[1.08] font-medium text-balance text-ink sm:text-[2.75rem]">
-                Sourcing decisions shouldn&apos;t take three weeks of emails.
+                Ready to source better?
               </h2>
               <p className="mx-auto mt-5 max-w-xl text-[15.5px] leading-relaxed text-pretty text-muted">
-                Create an account in under a minute. Onboarding is a short conversation, not a twelve-field form.
+                Find fabrics, compare suppliers and place your next order.
               </p>
               <div className="mt-9 flex flex-wrap items-center justify-center gap-3">
                 <ButtonLink
@@ -474,71 +423,3 @@ function RoleCard({
   );
 }
 
-/** A static, honest rendering of a real assistant exchange — same layout the
- *  live dock uses, so the marketing claim and the product agree. */
-function AssistantPreview() {
-  return (
-    <div className="rounded-[var(--radius-xl)] border border-line bg-canvas-veil p-1.5 shadow-[var(--shadow-lg)]">
-      <div className="rounded-[calc(var(--radius-xl)-7px)] border border-line bg-surface p-5 shadow-[var(--shadow-inset)] sm:p-6">
-        <div className="flex items-center gap-2.5 border-b border-line pb-4">
-          <span className="grid size-7 place-items-center rounded-full bg-brand text-white">
-            <ChatCircleDots size={14} weight="fill" />
-          </span>
-          <span className="text-[13px] font-medium text-ink">Threadwyn Assistant</span>
-          <span className="ml-auto flex items-center gap-1.5 font-mono text-[10px] text-subtle">
-            <span className="size-1.5 rounded-full bg-positive" />
-            grounded in 60 fabrics
-          </span>
-        </div>
-
-        <div className="space-y-4 pt-5">
-          <div className="flex justify-end">
-            <p className="max-w-[85%] rounded-[var(--radius-md)] rounded-br-sm bg-brand px-3.5 py-2.5 text-[13.5px] leading-relaxed text-white dark:text-[#08110d]">
-              Breathable cotton for summer shirting, under $4 a metre, at least 2000m on hand
-            </p>
-          </div>
-
-          <div className="space-y-3">
-            <p className="text-[13px] text-subtle">Applied these filters:</p>
-            <div className="flex flex-wrap gap-1.5">
-              {["Category: Shirting", "Fibre: Cotton", "≤ $4/m", "Stock ≥ 2000m", "≤ 160 gsm"].map((f) => (
-                <span
-                  key={f}
-                  className="inline-flex items-center gap-1.5 rounded-full border border-brand-line bg-brand-soft px-2.5 py-1 font-mono text-[11px] text-brand-ink"
-                >
-                  {f}
-                  <span aria-hidden className="text-brand-ink/45">
-                    ×
-                  </span>
-                </span>
-              ))}
-            </div>
-
-            <div className="space-y-2 rounded-[var(--radius-md)] border border-line bg-canvas-veil p-3.5">
-              {[
-                { name: "Compact Cotton Poplin 120", meta: "120 gsm · 8,400m · $2.80/m", hex: "#F7F5F0", weave: "PLAIN" as WeaveKey },
-                { name: "End-on-End 110", meta: "110 gsm · 4,100m · $2.90/m", hex: "#A9C0D4", weave: "PLAIN" as WeaveKey },
-                { name: "Indigo Chambray 130", meta: "130 gsm · 3,600m · $2.95/m", hex: "#5A6E92", weave: "PLAIN" as WeaveKey },
-              ].map((r) => (
-                <div key={r.name} className="flex items-center gap-3">
-                  <span className="size-9 shrink-0 overflow-hidden rounded-[var(--radius-xs)]">
-                    <FabricSwatch weave={r.weave} hex={r.hex} gsm={120} seed={r.name} alt="" drape={false} />
-                  </span>
-                  <span className="min-w-0 flex-1">
-                    <span className="block truncate text-[12.5px] font-medium text-ink">{r.name}</span>
-                    <span className="block truncate font-mono text-[10.5px] text-subtle">{r.meta}</span>
-                  </span>
-                </div>
-              ))}
-            </div>
-
-            <p className="text-[13px] leading-relaxed text-muted">
-              Three matches. The poplin has the deepest stock and the tightest weave — best if you need shade
-              consistency across a repeat order. The chambray is softer but only carries three colourways.
-            </p>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}

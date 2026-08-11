@@ -72,10 +72,18 @@ export function HeaderClient({
     setCatsOpen(false);
   }
 
+  // The open menu is a full-screen surface, so the page behind it must not
+  // scroll — and nothing else may float on top of it. `data-nav-open` is how
+  // the rest of the app finds out: the assistant launcher is fixed at z-70 and
+  // mounted per-page rather than in the layout, so a CSS hook reaches it
+  // without threading state through seven call sites.
   useEffect(() => {
     document.body.style.overflow = menuOpen ? "hidden" : "";
+    if (menuOpen) document.body.dataset.navOpen = "true";
+    else delete document.body.dataset.navOpen;
     return () => {
       document.body.style.overflow = "";
+      delete document.body.dataset.navOpen;
     };
   }, [menuOpen]);
 

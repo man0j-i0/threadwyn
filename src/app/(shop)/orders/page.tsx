@@ -33,8 +33,7 @@ export default async function OrdersPage() {
           My orders
         </h1>
         <p className="mt-3 max-w-2xl text-[15px] leading-relaxed text-muted">
-          A basket that spans several mills becomes several orders — one per mill, each tracked separately, so
-          a hold-up at one never hides progress at another.
+          Orders from different mills are tracked separately, so you always know where things stand.
         </p>
       </header>
 
@@ -76,9 +75,14 @@ export default async function OrdersPage() {
 function Section({ title, count, children }: { title: string; count: number; children: React.ReactNode }) {
   return (
     <section>
-      <h2 className="mb-4 flex items-baseline gap-2.5 text-[14px] font-semibold text-ink">
+      {/* The count sits in a chip rather than loose beside the heading. A bare
+          numeral next to bold text reads as something that failed to load; the
+          same figure inside a surface reads as a deliberate tally. */}
+      <h2 className="mb-4 flex items-center gap-2.5 text-[14px] font-semibold text-ink">
         {title}
-        <span className="font-mono text-[11px] font-normal text-subtle tnum">{count}</span>
+        <span className="grid min-w-6 place-items-center rounded-full bg-sunken px-2 py-0.5 font-mono text-[11px] font-normal text-subtle tnum">
+          {count}
+        </span>
       </h2>
       <div className="space-y-3">{children}</div>
     </section>

@@ -59,8 +59,7 @@ export default async function MarketplacePage({ searchParams }: PageProps) {
               : "Every fabric on Threadwyn"}
           </h1>
           <p className="mt-3 max-w-2xl text-[15px] leading-relaxed text-muted">
-            Swatches are rendered from each fabric&apos;s real weave, weight and dyed colourway — so what you
-            see is what arrives on the roll.
+            See each fabric&apos;s weave, weight and colourway before you order.
           </p>
         </header>
 

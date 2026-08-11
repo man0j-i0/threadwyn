@@ -19,7 +19,7 @@ export const CATEGORIES = [
     name: "Shirting",
     accentHex: "#5A7FA8",
     description: "Poplins, oxfords, chambrays and dobbies for formal and casual shirts.",
-    blurb: "Fine-count cotton wovens between 70 and 160 gsm.",
+    blurb: "Fine-count cotton weaves, 70–160 gsm.",
     featured: true,
   },
   {
@@ -27,7 +27,7 @@ export const CATEGORIES = [
     name: "Suiting & Tailoring",
     accentHex: "#4A4B58",
     description: "Worsted wools, poly-viscose blends and structured twills for tailored garments.",
-    blurb: "Structured cloth that holds a press and a shoulder.",
+    blurb: "Structured fabrics designed to hold shape.",
     featured: true,
   },
   {
@@ -35,7 +35,7 @@ export const CATEGORIES = [
     name: "Denim",
     accentHex: "#2A3A5C",
     description: "Selvedge, stretch and lightweight denims from 8oz to 14oz.",
-    blurb: "Indigo warp, undyed weft, twill line running right.",
+    blurb: "Twill fabrics with indigo warp construction.",
     featured: true,
   },
   {
@@ -43,7 +43,7 @@ export const CATEGORIES = [
     name: "Linen",
     accentHex: "#9A8C6A",
     description: "European and Indian flax in pure and blended constructions.",
-    blurb: "Breathable, slubby, and better after every wash.",
+    blurb: "Flax fabrics that soften with every wash.",
     featured: true,
   },
   {
@@ -51,7 +51,7 @@ export const CATEGORIES = [
     name: "Silk & Satin",
     accentHex: "#8E5A6B",
     description: "Mulberry charmeuse, dupioni, crepe de chine and woven brocade.",
-    blurb: "Fluid drape and directional sheen.",
+    blurb: "Fluid drape with directional sheen.",
     featured: true,
   },
   {
@@ -59,7 +59,7 @@ export const CATEGORIES = [
     name: "Knits & Jersey",
     accentHex: "#5C7A5E",
     description: "Single jersey, interlock, rib and French terry for tees and loungewear.",
-    blurb: "Interlooped, stretchy, soft against skin.",
+    blurb: "Interlooped knits with natural stretch.",
     featured: true,
   },
   {
@@ -67,14 +67,14 @@ export const CATEGORIES = [
     name: "Performance",
     accentHex: "#3E6E82",
     description: "Moisture-managing polyester, spandex blends and engineered mesh.",
-    blurb: "Built to move, wick and recover.",
+    blurb: "Engineered to wick, stretch and recover.",
   },
   {
     slug: "handloom-khadi",
     name: "Handloom & Khadi",
     accentHex: "#A8763E",
     description: "Hand-spun, hand-woven cloth from artisan clusters.",
-    blurb: "Irregular by hand, not by accident.",
+    blurb: "Hand-woven cloth with intentional irregularity.",
     featured: true,
   },
   {
@@ -82,28 +82,28 @@ export const CATEGORIES = [
     name: "Upholstery & Home",
     accentHex: "#7A5344",
     description: "Heavyweight wovens, velvets and chenilles rated for furnishing.",
-    blurb: "High rub counts and dimensional stability.",
+    blurb: "Heavy wovens rated for high rub counts.",
   },
   {
     slug: "canvas-workwear",
     name: "Canvas & Workwear",
     accentHex: "#6B6247",
     description: "Cotton duck, waxed canvas and ripstop for bags and workwear.",
-    blurb: "Heavy, honest, hard to tear.",
+    blurb: "Heavyweight cottons built to resist tearing.",
   },
   {
     slug: "lining",
     name: "Lining",
     accentHex: "#6E6A7A",
     description: "Cupro, viscose and taffeta linings that slide cleanly over shell fabrics.",
-    blurb: "The layer nobody sees and everybody feels.",
+    blurb: "Smooth linings that slide over shell fabrics.",
   },
   {
     slug: "sheers-voile",
     name: "Sheers & Voile",
     accentHex: "#93A3A8",
     description: "Voiles, organzas and mulls for layering, lining and curtains.",
-    blurb: "Light enough to read through.",
+    blurb: "Lightweight, semi-transparent fabrics for layering.",
   },
 ] as const;
 
@@ -139,7 +139,7 @@ export const SUPPLIERS = [
     businessType: "MILL",
     tagline: "Suiting cloth for the Indian tailoring trade",
     description:
-      "Three generations of powerloom weaving outside Mumbai. We specialise in poly-viscose and wool-blend suiting engineered for humid climates — lighter weights that still hold a crease through a Mumbai monsoon.",
+      "Three generations of powerloom weaving outside Mumbai. We specialise in poly-viscose and wool-blend suiting engineered for humid climates, in lighter weights that still hold a crease through a Mumbai monsoon.",
     contactEmail: "orders@bhiwandiloomworks.com",
     contactPhone: "+91 2522 268 940",
     addressLine1: "Gala 7-9, Mandai Compound",
@@ -164,7 +164,7 @@ export const SUPPLIERS = [
     businessType: "HANDLOOM",
     tagline: "Artisan-woven cloth from 60 Bhuj families",
     description:
-      "A producer collective of sixty weaving families across Bhuj and Bhujodi. Every metre is hand-spun and pit-loom woven. Slub, shade drift and small width variance are inherent to the process — we quote them up front rather than pretending otherwise.",
+      "A producer collective of sixty weaving families across Bhuj and Bhujodi. Every metre is hand-spun and pit-loom woven. Slub, shade drift and small width variance are inherent to the process, and we quote them up front rather than pretending otherwise.",
     contactEmail: "weave@kutchhandloom.org",
     contactPhone: "+91 2832 224 118",
     addressLine1: "Bhujodi Weavers Road",
@@ -285,7 +285,7 @@ export const SUPPLIERS = [
     businessType: "HANDLOOM",
     tagline: "Jacquard brocade on jala and jacquard looms",
     description:
-      "A Varanasi weaving house working figured silk — kadhwa brocade, tanchoi and tissue — on both traditional jala and mechanical jacquard heads. Custom motif development from artwork takes about three weeks.",
+      "A Varanasi weaving house working figured silks including kadhwa brocade, tanchoi and tissue, on both traditional jala and mechanical jacquard heads. Custom motif development from artwork takes about three weeks.",
     contactEmail: "atelier@varanasitextile.in",
     contactPhone: "+91 542 245 1170",
     addressLine1: "S-14/16 Peeli Kothi",
@@ -372,7 +372,6 @@ export type SeedProduct = {
   useCases: string[];
   sustainability?: string[];
   price: number;
-  compareAt?: number;
   moq: number;
   stock: number;
   leadTime: number;
@@ -422,7 +421,7 @@ export const PRODUCTS: SeedProduct[] = [
     supplier: "coimbatore-weaving", category: "shirting",
     name: "Dobby Pinpoint 125",
     description:
-      "A small geometric dobby figure woven into a pinpoint ground. Reads as a solid from two metres away and reveals its texture up close — the standard trick for adding interest to a formal shirt without breaking a dress code.",
+      "A small geometric dobby figure woven into a pinpoint ground. Reads as a solid from two metres away and reveals its texture up close. It is the standard trick for adding interest to a formal shirt without breaking a dress code.",
     composition: "100% Cotton", fibres: ["cotton"], weave: "DOBBY",
     gsm: 125, widthCm: 150, finish: "Mercerised, easy-care", handFeel: "Crisp with fine relief",
     useCases: ["Formal shirts", "Occasion shirting"],
@@ -444,7 +443,7 @@ export const PRODUCTS: SeedProduct[] = [
     supplier: "coimbatore-weaving", category: "shirting",
     name: "Cotton Seersucker 115",
     description:
-      "Differential warp tension puckers alternating stripes so the cloth stands off the skin. That air gap is the whole point — it is measurably cooler to wear than a flat weave of the same weight, and it never needs ironing.",
+      "Differential warp tension puckers alternating stripes so the cloth stands off the skin. That air gap is the whole point. It is measurably cooler to wear than a flat weave of the same weight, and it never needs ironing.",
     composition: "100% Cotton", fibres: ["cotton"], weave: "PLAIN",
     gsm: 115, widthCm: 145, finish: "Loom-state pucker, washed", handFeel: "Crinkled, airy",
     useCases: ["Summer shirts", "Suits (unstructured)", "Kidswear"],
@@ -474,14 +473,14 @@ export const PRODUCTS: SeedProduct[] = [
     composition: "100% Merino Wool (Super 110s)", fibres: ["wool"], weave: "TWILL",
     gsm: 240, widthCm: 150, finish: "Piece-dyed, decatised", handFeel: "Smooth, resilient, dry",
     useCases: ["Suits", "Blazers", "Trousers"],
-    price: 13.90, compareAt: 15.75, moq: 200, stock: 1600, leadTime: 14, featured: true,
+    price: 13.90, moq: 200, stock: 1600, leadTime: 14, featured: true,
     colors: ["charcoal", "navy", "midnight", "graphite", "slate"],
   },
   {
     supplier: "bhiwandi-loomworks", category: "suiting",
     name: "Tropical Wool 190",
     description:
-      "An open-sett plain weave that lets air move through the cloth. Built for humid climates — it will not hold a crease as hard as a 280gsm worsted, and that trade is deliberate.",
+      "An open-sett plain weave that lets air move through the cloth. Built for humid climates. It will not hold a crease as hard as a 280gsm worsted, and that trade is deliberate.",
     composition: "100% Wool", fibres: ["wool"], weave: "PLAIN",
     gsm: 190, widthCm: 150, finish: "Clear finish", handFeel: "Light, open, breathable",
     useCases: ["Summer suits", "Trousers", "Unstructured jackets"],
@@ -550,7 +549,7 @@ export const PRODUCTS: SeedProduct[] = [
     supplier: "ahmedabad-denim", category: "denim",
     name: "12oz Stretch Denim",
     description:
-      "Core-spun elastane weft at 1.5% gives 22% stretch with strong recovery — no bagging at the knee after a day's wear. The default construction for women's skinny and men's slim fits.",
+      "Core-spun elastane weft at 1.5% gives 22% stretch with strong recovery, so no bagging at the knee after a day's wear. The default construction for women's skinny and men's slim fits.",
     composition: "98% Cotton / 2% Elastane", fibres: ["cotton", "elastane"], weave: "TWILL",
     gsm: 407, widthCm: 152, finish: "Sanforised, skewed", handFeel: "Firm with recovery",
     useCases: ["Jeans", "Jeggings", "Denim skirts"],
@@ -598,7 +597,7 @@ export const PRODUCTS: SeedProduct[] = [
     supplier: "erode-linen", category: "linen",
     name: "Pure European Flax 165",
     description:
-      "Normandy flax, wet-spun for a smoother yarn than dry-spun equivalents, woven at a balanced sett. This is the reference weight for linen shirting and light trousers — enough body to hold a shape, light enough for 40°C.",
+      "Normandy flax, wet-spun for a smoother yarn than dry-spun equivalents, woven at a balanced sett. This is the reference weight for linen shirting and light trousers, with enough body to hold a shape and light enough for 40°C.",
     composition: "100% Linen", fibres: ["linen"], weave: "PLAIN",
     gsm: 165, widthCm: 145, finish: "Softened, pre-shrunk", handFeel: "Dry, crisp, cooling",
     useCases: ["Shirts", "Trousers", "Dresses", "Resortwear"],
@@ -622,7 +621,7 @@ export const PRODUCTS: SeedProduct[] = [
     supplier: "erode-linen", category: "linen",
     name: "Linen Slub Gauze 120",
     description:
-      "Deliberately irregular slub yarn at an open sett. Almost translucent in strong light and it wrinkles freely — buyers who want it flat should look at the linen-cotton instead.",
+      "Deliberately irregular slub yarn at an open sett. Almost translucent in strong light and it wrinkles freely. Buyers who want it flat should look at the linen-cotton instead.",
     composition: "100% Linen", fibres: ["linen"], weave: "PLAIN",
     gsm: 120, widthCm: 140, finish: "Enzyme washed", handFeel: "Airy, textured, relaxed",
     useCases: ["Summer dresses", "Scarves", "Curtains"],
@@ -645,7 +644,7 @@ export const PRODUCTS: SeedProduct[] = [
     supplier: "kutch-handloom", category: "linen",
     name: "Handwoven Linen 180",
     description:
-      "Pit-loom woven linen from the Bhujodi cluster. Width holds to 108cm ±2cm and the weft density varies slightly across a piece — the visible record of a person having made it.",
+      "Pit-loom woven linen from the Bhujodi cluster. Width holds to 108cm ±2cm and the weft density varies slightly across a piece, the visible record of a person having made it.",
     composition: "100% Linen", fibres: ["linen"], weave: "PLAIN",
     gsm: 180, widthCm: 108, finish: "Loom state, washed", handFeel: "Rustic, dense, alive",
     useCases: ["Artisanal apparel", "Table linen", "Cushions"],
@@ -659,7 +658,7 @@ export const PRODUCTS: SeedProduct[] = [
     supplier: "surat-silk-house", category: "silk-satin",
     name: "Mulberry Charmeuse 16mm",
     description:
-      "Sixteen-momme mulberry silk in a satin weave — glossy face, matte reverse. The weight most bridalwear and premium lining is cut from. Long floats mean it snags, so plan interlinings accordingly.",
+      "Sixteen-momme mulberry silk in a satin weave, glossy on the face and matte on the reverse. The weight most bridalwear and premium lining is cut from. Long floats mean it snags, so plan interlinings accordingly.",
     composition: "100% Mulberry Silk", fibres: ["silk"], weave: "SATIN",
     gsm: 71, widthCm: 114, finish: "Degummed, calendered", handFeel: "Liquid, cool, lustrous",
     useCases: ["Eveningwear", "Bridal", "Premium lining", "Sleepwear"],
@@ -671,7 +670,7 @@ export const PRODUCTS: SeedProduct[] = [
     supplier: "surat-silk-house", category: "silk-satin",
     name: "Silk Dupioni 90",
     description:
-      "Woven from double-cocoon yarn, which is why the slubs are irregular and unavoidable. Holds a sculptural shape better than any other silk at this weight — the reason it dominates structured bridalwear.",
+      "Woven from double-cocoon yarn, which is why the slubs are irregular and unavoidable. Holds a sculptural shape better than any other silk at this weight, which is why it dominates structured bridalwear.",
     composition: "100% Silk", fibres: ["silk"], weave: "PLAIN",
     gsm: 90, widthCm: 110, finish: "Degummed", handFeel: "Crisp, papery, structured",
     useCases: ["Bridal", "Structured dresses", "Cushions"],
@@ -695,7 +694,7 @@ export const PRODUCTS: SeedProduct[] = [
     supplier: "surat-silk-house", category: "silk-satin",
     name: "Poly Satin Charmeuse 95",
     description:
-      "A filament polyester satin engineered to imitate silk charmeuse at roughly a seventh of the cost. Higher shine, less breathability, and it will not water-spot — which for stagewear is a feature.",
+      "A filament polyester satin engineered to imitate silk charmeuse at roughly a seventh of the cost. Higher shine, less breathability, and it will not water-spot, which for stagewear is a feature.",
     composition: "100% Polyester", fibres: ["polyester"], weave: "SATIN",
     gsm: 95, widthCm: 150, finish: "Heat set, calendered", handFeel: "Slippery, high-shine",
     useCases: ["Occasionwear", "Costume", "Lining", "Drapery"],
@@ -718,7 +717,7 @@ export const PRODUCTS: SeedProduct[] = [
     supplier: "varanasi-atelier", category: "silk-satin",
     name: "Tanchoi Silk 140",
     description:
-      "A satin-ground tanchoi with the extra weft floats carried on the reverse rather than cut — so the back stays clean and the cloth reads lighter than a comparable brocade.",
+      "A satin-ground tanchoi with the extra weft floats carried on the reverse rather than cut, so the back stays clean and the cloth reads lighter than a comparable brocade.",
     composition: "100% Silk", fibres: ["silk"], weave: "JACQUARD",
     gsm: 140, widthCm: 110, finish: "Loom state, pressed", handFeel: "Smooth face, dense",
     useCases: ["Occasionwear", "Jackets", "Cushions"],
@@ -732,7 +731,7 @@ export const PRODUCTS: SeedProduct[] = [
     supplier: "ludhiana-knit-mills", category: "knits-jersey",
     name: "Combed Single Jersey 180",
     description:
-      "30s combed cotton on a 24-gauge circular machine, compacted to hold residual shrinkage under 5%. The workhorse tee fabric — soft, even, and predictable across repeat orders.",
+      "30s combed cotton on a 24-gauge circular machine, compacted to hold residual shrinkage under 5%. The workhorse tee fabric. Soft, even, and predictable across repeat orders.",
     composition: "100% Combed Cotton", fibres: ["cotton"], weave: "JERSEY",
     gsm: 180, widthCm: 180, finish: "Bio-washed, compacted", handFeel: "Soft, smooth, light",
     useCases: ["T-shirts", "Basics", "Kidswear"],
@@ -766,7 +765,7 @@ export const PRODUCTS: SeedProduct[] = [
     supplier: "ludhiana-knit-mills", category: "knits-jersey",
     name: "French Terry 300",
     description:
-      "Loop-back terry with an unbrushed reverse — noticeably less bulky than fleece and far more wearable indoors. The loops trap air without the shed that brushing produces.",
+      "Loop-back terry with an unbrushed reverse, noticeably less bulky than fleece and far more wearable indoors. The loops trap air without the shed that brushing produces.",
     composition: "80% Cotton / 20% Polyester", fibres: ["cotton", "polyester"], weave: "JERSEY",
     gsm: 300, widthCm: 180, finish: "Compacted", handFeel: "Plush reverse, smooth face",
     useCases: ["Sweatshirts", "Joggers", "Hoodies"],
@@ -788,7 +787,7 @@ export const PRODUCTS: SeedProduct[] = [
     supplier: "ludhiana-knit-mills", category: "knits-jersey",
     name: "Slub Jersey 170",
     description:
-      "Deliberately uneven slub yarn gives a lived-in, vintage surface straight off the machine. Batch-to-batch slub character varies slightly — worth approving a bulk swatch, not just a lab dip.",
+      "Deliberately uneven slub yarn gives a lived-in, vintage surface straight off the machine. Batch-to-batch slub character varies slightly, so approve a bulk swatch rather than just a lab dip.",
     composition: "100% Cotton", fibres: ["cotton"], weave: "JERSEY",
     gsm: 170, widthCm: 180, finish: "Garment washed", handFeel: "Textured, soft, dry",
     useCases: ["Premium tees", "Casual knitwear"],
@@ -801,7 +800,7 @@ export const PRODUCTS: SeedProduct[] = [
     supplier: "ludhiana-knit-mills", category: "performance",
     name: "Recycled Poly Jersey 190",
     description:
-      "Knitted from GRS-certified post-consumer PET yarn with a permanent wicking finish. Moisture transport tested at 4.2 on the AATCC 195 scale — comparable to virgin polyester of the same construction.",
+      "Knitted from GRS-certified post-consumer PET yarn with a permanent wicking finish. Moisture transport tested at 4.2 on the AATCC 195 scale, comparable to virgin polyester of the same construction.",
     composition: "88% Recycled Polyester / 12% Elastane",
     fibres: ["polyester", "elastane"], weave: "JERSEY",
     gsm: 190, widthCm: 155, finish: "Wicking, anti-odour", handFeel: "Smooth, cool, elastic",
@@ -814,7 +813,7 @@ export const PRODUCTS: SeedProduct[] = [
     supplier: "ludhiana-knit-mills", category: "performance",
     name: "Power Mesh 130",
     description:
-      "An open warp-knit mesh with high two-way stretch, used as panelling for ventilation or as a support layer. Snags easily against velcro — keep it away from hook fastenings in the cutting room.",
+      "An open warp-knit mesh with high two-way stretch, used as panelling for ventilation or as a support layer. Snags easily against velcro, so keep it away from hook fastenings in the cutting room.",
     composition: "80% Nylon / 20% Elastane", fibres: ["nylon", "elastane"], weave: "JERSEY",
     gsm: 130, widthCm: 150, finish: "Heat set", handFeel: "Light, springy, open",
     useCases: ["Activewear panels", "Linings", "Shapewear"],
@@ -836,7 +835,7 @@ export const PRODUCTS: SeedProduct[] = [
     supplier: "ludhiana-knit-mills", category: "performance",
     name: "Four-Way Stretch Woven 175",
     description:
-      "A woven softshell with elastane in both directions — 30% stretch warpwise and weftwise. Cuts and sews like a woven but moves like a knit, which is the point for technical trousers.",
+      "A woven softshell with elastane in both directions, giving 30% stretch warpwise and weftwise. Cuts and sews like a woven but moves like a knit, which is the point for technical trousers.",
     composition: "86% Polyester / 14% Elastane", fibres: ["polyester", "elastane"], weave: "TWILL",
     gsm: 175, widthCm: 150, finish: "DWR, heat set", handFeel: "Smooth, dry, elastic",
     useCases: ["Technical trousers", "Outdoor shirts", "Golf apparel"],
@@ -849,7 +848,7 @@ export const PRODUCTS: SeedProduct[] = [
     supplier: "kutch-handloom", category: "handloom-khadi",
     name: "Hand-Spun Khadi Cotton 150",
     description:
-      "Charkha-spun yarn woven on a pit loom. Slub, count variation and a 2-3cm width drift are inherent to the process, not defects — cutting layouts should carry a little more allowance than for mill cloth.",
+      "Charkha-spun yarn woven on a pit loom. Slub, count variation and a 2-3cm width drift are inherent to the process, not defects. Cutting layouts should carry a little more allowance than for mill cloth.",
     composition: "100% Hand-Spun Cotton", fibres: ["cotton"], weave: "PLAIN",
     gsm: 150, widthCm: 100, finish: "Loom state, washed", handFeel: "Textured, breathable, alive",
     useCases: ["Kurtas", "Shirts", "Artisanal apparel"],
@@ -873,7 +872,7 @@ export const PRODUCTS: SeedProduct[] = [
     supplier: "kutch-handloom", category: "handloom-khadi",
     name: "Handloom Cotton Ikat 160",
     description:
-      "Warp-resist tied and dyed before weaving, which is why the motif edges feather rather than print sharp. That feathering is the authenticity marker — a printed imitation has hard edges.",
+      "Warp-resist tied and dyed before weaving, which is why the motif edges feather rather than print sharp. That feathering is the authenticity marker. A printed imitation has hard edges.",
     composition: "100% Cotton", fibres: ["cotton"], weave: "PLAIN",
     gsm: 160, widthCm: 108, finish: "Washed", handFeel: "Soft, matte, textured",
     useCases: ["Dresses", "Shirts", "Home furnishing"],
@@ -910,7 +909,7 @@ export const PRODUCTS: SeedProduct[] = [
     supplier: "varanasi-atelier", category: "upholstery",
     name: "Cotton Velvet 340",
     description:
-      "A cut-pile cotton velvet with a short 2mm nap. Directional — cut every panel the same way or the shade shifts visibly between them. Pressure marks lift with steam.",
+      "A cut-pile cotton velvet with a short 2mm nap. Directional, so cut every panel the same way or the shade shifts visibly between them. Pressure marks lift with steam.",
     composition: "100% Cotton", fibres: ["cotton"], weave: "PLAIN",
     gsm: 340, widthCm: 140, finish: "Pile cut, sheared", handFeel: "Plush, dense, directional",
     useCases: ["Upholstery", "Curtains", "Occasion jackets"],
@@ -945,7 +944,7 @@ export const PRODUCTS: SeedProduct[] = [
     supplier: "ahmedabad-denim", category: "canvas-workwear",
     name: "Waxed Cotton Canvas 380",
     description:
-      "Paraffin-wax impregnated canvas — water-repellent, self-patinating, and re-waxable rather than disposable. Do not dry clean; the solvent strips the wax out entirely.",
+      "Paraffin-wax impregnated canvas that is water-repellent, self-patinating and re-waxable rather than disposable. Do not dry clean; the solvent strips the wax out entirely.",
     composition: "100% Cotton (wax finish)", fibres: ["cotton"], weave: "CANVAS",
     gsm: 380, widthCm: 145, finish: "Paraffin wax impregnated", handFeel: "Waxy, firm, weathering",
     useCases: ["Field jackets", "Bags", "Outdoor gear"],
@@ -1003,7 +1002,7 @@ export const PRODUCTS: SeedProduct[] = [
     supplier: "coimbatore-weaving", category: "lining",
     name: "Cotton Pocketing 120",
     description:
-      "Tight plain-weave cotton for pocket bags. Chosen for tear strength at the corner seam rather than hand — this is a structural component, not a comfort layer.",
+      "Tight plain-weave cotton for pocket bags. Chosen for tear strength at the corner seam rather than hand. This is a structural component, not a comfort layer.",
     composition: "100% Cotton", fibres: ["cotton"], weave: "PLAIN",
     gsm: 120, widthCm: 150, finish: "Sanforised", handFeel: "Crisp, thin, tough",
     useCases: ["Pocket bags", "Waistband curtain"],
@@ -1016,7 +1015,7 @@ export const PRODUCTS: SeedProduct[] = [
     supplier: "coimbatore-weaving", category: "sheers-voile",
     name: "Cotton Voile 62",
     description:
-      "High-twist single yarn at an open sett — semi-transparent, extremely light, and surprisingly durable for its weight. Almost always needs a lining or a doubled construction in apparel.",
+      "High-twist single yarn at an open sett, semi-transparent, extremely light, and surprisingly durable for its weight. Almost always needs a lining or a doubled construction in apparel.",
     composition: "100% Cotton", fibres: ["cotton"], weave: "PLAIN",
     gsm: 62, widthCm: 145, finish: "Mercerised, softened", handFeel: "Sheer, crisp, airy",
     useCases: ["Summer dresses", "Layering", "Curtains", "Dupattas"],
@@ -1054,7 +1053,7 @@ export const PRODUCTS: SeedProduct[] = [
     supplier: "coimbatore-weaving", category: "shirting",
     name: "Giza 87 Poplin 105",
     description:
-      "Extra-long-staple Egyptian Giza 87 in a 2/140s poplin. The finest cloth we weave and the slowest to make — allocated to standing orders first, so quote lead time before promising a delivery date.",
+      "Extra-long-staple Egyptian Giza 87 in a 2/140s poplin. The finest cloth we weave and the slowest to make. It is allocated to standing orders first, so quote lead time before promising a delivery date.",
     composition: "100% Giza 87 Cotton", fibres: ["cotton"], weave: "PLAIN",
     gsm: 105, widthCm: 150, finish: "Mercerised, singed", handFeel: "Silken, cool, very fine",
     useCases: ["Luxury shirting", "Bespoke tailoring"],
@@ -1066,7 +1065,7 @@ export const PRODUCTS: SeedProduct[] = [
     supplier: "ludhiana-knit-mills", category: "knits-jersey",
     name: "Organic Cotton Jersey 200",
     description:
-      "GOTS-certified organic cotton, undyed and unbleached so the natural cotton colour comes through. Currently between lots — the next greige batch is on the machine.",
+      "GOTS-certified organic cotton, undyed and unbleached so the natural cotton colour comes through. Currently between lots. The next greige batch is on the machine.",
     composition: "100% Organic Cotton", fibres: ["cotton"], weave: "JERSEY",
     gsm: 200, widthCm: 180, finish: "Bio-washed, undyed", handFeel: "Soft, natural, dry",
     useCases: ["Babywear", "Premium tees", "Sleepwear"],
@@ -1078,7 +1077,7 @@ export const PRODUCTS: SeedProduct[] = [
     supplier: "varanasi-atelier", category: "silk-satin",
     name: "Tissue Silk with Zari 85",
     description:
-      "A gossamer silk shot with flat zari, so light it is almost weightless and correspondingly fragile. Handle on rollers, never folded — a crease line in tissue silk does not fully recover.",
+      "A gossamer silk shot with flat zari, so light it is almost weightless and correspondingly fragile. Handle on rollers, never folded. A crease line in tissue silk does not fully recover.",
     composition: "80% Silk / 20% Zari", fibres: ["silk", "zari"], weave: "PLAIN",
     gsm: 85, widthCm: 110, finish: "Loom state", handFeel: "Weightless, shimmering, delicate",
     useCases: ["Bridal overlays", "Dupattas", "Occasionwear"],
@@ -1090,7 +1089,7 @@ export const PRODUCTS: SeedProduct[] = [
     supplier: "erode-linen", category: "linen",
     name: "Linen Herringbone 200",
     description:
-      "A 4mm herringbone in pure linen. Still on the sampling loom — pricing is indicative and the finish is not yet locked.",
+      "A 4mm herringbone in pure linen. Still on the sampling loom. Pricing is indicative and the finish is not yet locked.",
     composition: "100% Linen", fibres: ["linen"], weave: "HERRINGBONE",
     gsm: 200, widthCm: 145, finish: "In development", handFeel: "Dry, structured",
     useCases: ["Jackets", "Trousers"],

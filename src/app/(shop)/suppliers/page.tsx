@@ -50,8 +50,8 @@ export default async function SuppliersPage() {
         <Reveal>
           <SectionHeading
             eyebrow="Who you're buying from"
-            title="The mills behind the catalogue"
-            description="Every supplier here is a real operation with a real address and real operating hours. Verified means we've confirmed the business exists and the certifications it lists are on file."
+            title="Meet the mills behind the fabrics"
+            description="Explore verified suppliers, their fabrics and certifications."
           />
         </Reveal>
 

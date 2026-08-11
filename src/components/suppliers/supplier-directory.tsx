@@ -122,7 +122,11 @@ export function SupplierDirectory({ suppliers }: { suppliers: DirectorySupplier[
         ) : null}
       </div>
 
-      <p aria-live="polite" className="mt-3 font-mono text-[11.5px] text-subtle tnum">
+      {/* The count is off the page but not out of the accessibility tree.
+          Sighted users can see the list resize as they type; a screen reader
+          user filtering by keyboard gets nothing at all unless the change is
+          announced, so this stays as a live region. */}
+      <p aria-live="polite" className="sr-only">
         {q
           ? `${visible.length} of ${suppliers.length} ${pluralise(suppliers.length, "mill")}`
           : `${suppliers.length} ${pluralise(suppliers.length, "mill")}`}
@@ -232,7 +236,12 @@ export function SupplierDirectory({ suppliers }: { suppliers: DirectorySupplier[
 
                   {/* A strip of what they actually make — more useful than a logo. */}
                   {s.products.length ? (
-                    <div className="grid grid-cols-4 gap-2 lg:grid-cols-2 xl:grid-cols-4">
+                    // `items-start`, because this grid is itself a grid item and
+                    // gets stretched to the height of the text column beside it.
+                    // Without it each tile stretched too, and since the square is
+                    // an inner element the cloth rendered at the top of a much
+                    // taller bordered box — reading as a half-loaded image.
+                    <div className="grid grid-cols-4 items-start gap-2 lg:grid-cols-2 xl:grid-cols-4">
                       {s.products.map((p) => (
                         <Link
                           key={p.id}

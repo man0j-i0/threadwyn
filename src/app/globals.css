@@ -258,15 +258,32 @@ body::before {
   color: var(--brand-ink);
 }
 
-/* Focus: always visible, never removed. 2px ring + offset for contrast on any surface. */
-:focus-visible {
-  outline: 2px solid var(--ring);
-  outline-offset: 2px;
-  border-radius: 4px;
-}
+/* Focus: always visible, never removed. 2px ring + offset for contrast on any
+   surface.
 
-:focus:not(:focus-visible) {
-  outline: none;
+   Two things this rule used to get wrong.
+
+   It set `border-radius: 4px`, which does not round the outline — it rounds the
+   *element*, and only while focused. Every pill, avatar and rounded card
+   snapped to 4px corners the moment it took focus. An outline already follows
+   whatever radius its element has, so the correct value is no value at all.
+
+   And it sat outside a layer. `@import "tailwindcss"` puts utilities in
+   `@layer utilities`, and unlayered CSS beats every layer no matter the
+   specificity — so `focus-visible:outline-none` was dead everywhere it was
+   used. Composite controls like the search fields deliberately silence the
+   inner input and draw one ring on the wrapper with `focus-within`; unlayered,
+   this rule drew a second rectangle inside the pill regardless. In `base` it
+   is still the default, and a component that means to override it now can. */
+@layer base {
+  :focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+  }
+
+  :focus:not(:focus-visible) {
+    outline: none;
+  }
 }
 
 /* Numerals in tables, prices, quantities and IDs must not jitter. */
@@ -483,6 +500,42 @@ input[type="number"] {
   }
   .skeleton::after {
     animation: none;
+  }
+}
+
+/* ============================================================================
+   SEARCH INPUTS — one clear button, not two.
+   ========================================================================= */
+
+/* `type="search"` is the right element: it announces as a search field and
+   picks up Escape-to-clear. It also draws its own cancel button in WebKit and
+   Chromium, which sat next to ours and gave the field two crosses — one
+   styled, one the platform's blue default. Suppress the native one and keep
+   the button we control, so the affordance matches the rest of the app. */
+input[type="search"]::-webkit-search-cancel-button,
+input[type="search"]::-webkit-search-decoration {
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+/* ============================================================================
+   MOBILE NAV — nothing floats over an open menu.
+   ========================================================================= */
+
+/* The assistant launcher is fixed at z-70; the mobile menu sits at z-50 and
+   cannot outrank it without also outranking the dock's own panel. Rather than
+   fight the stacking order, the launcher steps aside while the menu is open
+   and returns when it closes. `visibility` rather than `display` so the exit
+   spring still plays, and it is inert to the keyboard and to screen readers
+   while hidden. Only mobile: the menu itself is `lg:hidden`. */
+@media (width < 64rem) {
+  body[data-nav-open] [data-assistant-launcher] {
+    visibility: hidden;
+    opacity: 0;
+    pointer-events: none;
+    transition:
+      opacity 0.18s var(--ease-out-expo),
+      visibility 0s linear 0.18s;
   }
 }
 

@@ -195,6 +195,7 @@ export function AssistantDock({ productSlug, productName }: { productSlug?: stri
             transition={{ type: "spring", stiffness: 380, damping: 30 }}
             aria-label="Open the Threadwyn assistant"
             data-print-hide
+            data-assistant-launcher
             className={cn(
               "group fixed right-4 bottom-4 z-70 flex cursor-pointer items-center gap-2.5 sm:right-6 sm:bottom-6",
               "rounded-full border border-brand-line bg-brand px-5 py-3 text-white dark:text-[#08110d]",

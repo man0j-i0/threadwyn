@@ -39,22 +39,22 @@ function buildStages(opts: {
     {
       at: 0,
       label: "One thread",
-      body: `Every metre of ${opts.productName} starts here — a single plied cord, the colour it will actually ship in.`,
+      body: `Every metre of ${opts.productName} starts with a single plied thread in the final colour.`,
     },
     {
       at: 0.28,
       label: "Fibre",
-      body: `Unravelled, it is thousands of loose filaments. On their own they have almost no strength; individually they would pull apart in your fingers.`,
+      body: `Unravelled, the yarn becomes thousands of loose filaments. On their own, they have almost no strength.`,
     },
     {
       at: 0.55,
       label: "Twist",
-      body: `Spun together, they grip. Twist is the whole trick — it is what turns loose fibre into a yarn that can take a loom's tension at ${opts.endsPerCm} ends per centimetre.`,
+      body: `Twisting the fibres gives the yarn its strength and structure. This yarn is built to handle the tension of the loom at ${opts.endsPerCm} ends per centimetre.`,
     },
     {
       at: 0.84,
       label: "Cloth",
-      body: `${WEAVE_LABELS[opts.weave]} — ${opts.interlacing}, ${opts.picksPerCm} picks per centimetre. ${opts.composition}, ${opts.gsm} gsm. This is the swatch you'd see on the product page, rendered from these exact specs.`,
+      body: `${WEAVE_LABELS[opts.weave]}, ${opts.interlacing}, with ${opts.picksPerCm} picks per centimetre. ${opts.composition}, ${opts.gsm} gsm. These are the same specifications used to render the product swatch.`,
     },
   ];
 }

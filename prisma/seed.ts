@@ -218,7 +218,10 @@ async function main() {
         useCases: p.useCases,
         sustainability: p.sustainability ?? [],
         pricePerMetre: p.price,
-        compareAtPrice: p.compareAt ?? null,
+        // Column retained, never written. Strike-through pricing is a retail
+        // signal; the B2B equivalent is volume price breaks, which are not
+        // built. Dropping the column is a migration, not a UI change.
+        compareAtPrice: null,
         moqMetres: p.moq,
         stockMetres: totalStock,
         leadTimeDays: p.leadTime,
