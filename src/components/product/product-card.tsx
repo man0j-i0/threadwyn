@@ -7,6 +7,7 @@ import type { WeaveKey } from "@/lib/weave";
 import { FabricSwatch } from "./fabric-swatch";
 import { StockPill } from "./stock-pill";
 import { QuickAdd } from "./quick-add";
+import { CompareToggle } from "./compare-toggle";
 
 export type ProductCardData = {
   id: string;
@@ -47,7 +48,6 @@ export async function ProductCard({
 
   const lead = product.colorways[0];
   const hero = product.images[0];
-  const discounted = product.compareAtPrice && product.compareAtPrice > product.pricePerMetre;
 
   return (
     <article
@@ -84,11 +84,6 @@ export async function ProductCard({
 
         <div className="pointer-events-none absolute inset-x-2 top-2 flex items-start justify-end gap-2">
           <StockPill stock={product.stockMetres} status={product.status} />
-          {discounted ? (
-            <span className="rounded-full bg-accent px-2 py-1 font-mono text-[10px] font-medium text-white shadow-[var(--shadow-sm)]">
-              −{Math.round((1 - product.pricePerMetre / product.compareAtPrice!) * 100)}%
-            </span>
-          ) : null}
         </div>
 
         {/* Colourways float over the swatch so the card stays compact but the
@@ -152,27 +147,30 @@ export async function ProductCard({
               {formatMoney(product.pricePerMetre)}
               <span className="ml-0.5 text-[11px] font-normal text-subtle">/m</span>
             </p>
-            {discounted ? (
-              <p className="mt-1 font-mono text-[11px] text-subtle line-through tnum">
-                {formatMoney(product.compareAtPrice!)}
-              </p>
-            ) : (
-              <p className="mt-1 text-[11px] text-subtle">{formatMetres(product.stockMetres)} available</p>
-            )}
+            <p className="mt-1 text-[11px] text-subtle">{formatMetres(product.stockMetres)} available</p>
           </div>
 
           {/* Sits above the stretched link so it stays independently clickable. */}
-          {canBuy ? (
-            <div className="relative z-10">
+          <div className="relative z-10 flex items-center gap-1.5">
+            <CompareToggle slug={product.slug} name={product.name} />
+            {/* Quick-add always adds exactly one MOQ, so a fabric holding less
+                than its own minimum cannot be quick-added at all — the cart
+                would flag the line the moment it landed. Same rule the product
+                page and the checkout transaction enforce. */}
+            {canBuy ? (
               <QuickAdd
                 productId={product.id}
                 productName={product.name}
                 colorwayId={lead?.id ?? null}
                 moq={product.moqMetres}
-                disabled={product.status !== "ACTIVE" || product.stockMetres <= 0}
+                disabled={
+                  product.status !== "ACTIVE" ||
+                  product.stockMetres <= 0 ||
+                  product.stockMetres < product.moqMetres
+                }
               />
-            </div>
-          ) : null}
+            ) : null}
+          </div>
         </div>
       </div>
     </article>

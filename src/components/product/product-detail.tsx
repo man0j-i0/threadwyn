@@ -15,6 +15,7 @@ import {
 } from "@phosphor-icons/react";
 
 import { cn, formatMetres, formatMoney, formatNumber } from "@/lib/utils";
+import { COMPARE_LIMIT, useCompare } from "@/lib/use-compare";
 import { WEAVE_LABELS, WEAVE_NOTES, type WeaveKey } from "@/lib/weave";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -66,6 +67,7 @@ export function ProductDetail({
 }) {
   const router = useRouter();
   const { toast } = useToast();
+  const compare = useCompare();
 
   const [colorway, setColorway] = useState(product.colorways[0] ?? null);
   const [quantity, setQuantity] = useState(product.moqMetres);
@@ -73,9 +75,42 @@ export function ProductDetail({
   const [added, setAdded] = useState(false);
 
   const available = colorway?.stockMetres ?? product.stockMetres;
-  const orderable = canBuy && product.status === "ACTIVE" && available > 0;
+  /**
+   * Threadwyn sells stock that exists. One rule, and the product page, the cart
+   * and the checkout transaction all hold to it.
+   *
+   * This page used to imply otherwise — it offered to have the mill "weave the
+   * balance" of anything the buyer asked for beyond stock, which is genuinely
+   * how a mill works, but nothing downstream honours it: the cart flags the
+   * line and the checkout transaction rejects it. A product page promising what
+   * checkout refuses is worse than either behaviour on its own.
+   *
+   * Make-to-order is the better long-term model. It needs production quantities,
+   * split fulfilment and reserved stock on the order line, not a relaxed check
+   * here.
+   *
+   * `belowMoq` is the case that has no way out: once a colourway holds less
+   * than the mill's own minimum, no quantity is both above MOQ and within
+   * stock, so the fabric is simply not orderable in that colour today.
+   */
+  const belowMoq = available > 0 && available < product.moqMetres;
+  const overStock = available > 0 && quantity > available;
+  const orderable =
+    canBuy && product.status === "ACTIVE" && available > 0 && !belowMoq && !overStock;
+
+  const ctaLabel = !canBuy
+    ? "Buyer accounts only"
+    : available <= 0
+      ? "Out of stock"
+      : belowMoq
+        ? "Below the mill's minimum"
+        : overStock
+          ? "Reduce quantity to continue"
+          : added
+            ? "Added to cart"
+            : "Add to cart";
+
   const lineTotal = quantity * product.pricePerMetre;
-  const discounted = product.compareAtPrice && product.compareAtPrice > product.pricePerMetre;
   const hero = product.images[0];
 
   // Steps sized to the mill's minimum — clicking + on a 300m MOQ should move
@@ -234,11 +269,6 @@ export function ProductDetail({
             {formatMoney(product.pricePerMetre)}
             <span className="ml-1 text-[14px] font-normal text-subtle">/metre</span>
           </p>
-          {discounted ? (
-            <p className="font-mono text-[15px] text-subtle line-through tnum">
-              {formatMoney(product.compareAtPrice!)}
-            </p>
-          ) : null}
         </div>
 
         {/* The four figures a sourcing decision turns on, in one glance. */}
@@ -357,11 +387,18 @@ export function ProductDetail({
             </div>
           </div>
 
-          {quantity > available && available > 0 ? (
+          {belowMoq ? (
             <p role="alert" className="mt-2.5 flex items-start gap-1.5 text-[12px] leading-relaxed text-warn">
               <WarningCircle size={13} weight="fill" className="mt-px shrink-0" />
-              Only {formatMetres(available)} of {colorway?.name ?? "this fabric"} is on hand. The mill can weave the
-              balance in about {product.leadTimeDays} days.
+              {formatMetres(available)} of {colorway?.name ?? "this fabric"} available, under this mill&apos;s{" "}
+              {formatMetres(product.moqMetres)} minimum. Try another colourway, or check back after the next
+              lot.
+            </p>
+          ) : overStock ? (
+            <p role="alert" className="mt-2.5 flex items-start gap-1.5 text-[12px] leading-relaxed text-warn">
+              <WarningCircle size={13} weight="fill" className="mt-px shrink-0" />
+              Only {formatMetres(available)} of {colorway?.name ?? "this fabric"} is currently available.
+              Reduce the quantity to continue.
             </p>
           ) : null}
 
@@ -381,16 +418,34 @@ export function ProductDetail({
             disabled={!orderable}
             icon={added ? <Check size={16} weight="bold" /> : <Handbag size={16} weight="light" />}
           >
-            {!canBuy ? "Buyer accounts only" : !orderable ? "Out of stock" : added ? "Added to cart" : "Add to cart"}
+            {ctaLabel}
           </Button>
 
           <div className="grid grid-cols-2 gap-2.5">
+            {/* Adds to the shortlist rather than navigating. Pushing straight
+                to /compare with one slug is what produced a comparison with a
+                single column and no way to add a second. */}
             <Button
               variant="secondary"
-              onClick={() => router.push(`/compare?slugs=${product.slug}`)}
-              icon={<ArrowsLeftRight size={15} weight="light" />}
+              onClick={() => {
+                const result = compare.toggle(product.slug);
+                if (result.full) {
+                  toast({
+                    tone: "error",
+                    title: `Compare holds ${COMPARE_LIMIT} fabrics`,
+                    description: "Remove one before adding another.",
+                  });
+                }
+              }}
+              icon={
+                compare.has(product.slug) ? (
+                  <Check size={15} weight="bold" />
+                ) : (
+                  <ArrowsLeftRight size={15} weight="light" />
+                )
+              }
             >
-              Compare
+              {compare.has(product.slug) ? "In compare" : "Compare"}
             </Button>
             <Button
               variant="secondary"

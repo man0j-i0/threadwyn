@@ -529,21 +529,6 @@ export function ProductForm({
                 />
               )}
             </Field>
-            <Field label="Was (strike-through)" optional hint="Only if this is a genuine reduction.">
-              {(p) => (
-                <Input
-                  {...p}
-                  id="product-compareAtPrice"
-                  type="number"
-                  min={0}
-                  step="0.01"
-                  inputMode="decimal"
-                  value={form.compareAtPrice ?? ""}
-                  onChange={(e) => set("compareAtPrice", e.target.value ? Number(e.target.value) : null)}
-                  prefix="$"
-                />
-              )}
-            </Field>
           </div>
 
           <div className="grid gap-5 sm:grid-cols-2">

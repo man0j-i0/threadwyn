@@ -4,6 +4,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { X } from "@phosphor-icons/react";
 
+import { useCompare } from "@/lib/use-compare";
+
 /** Remove one column from the comparison, or open that fabric. */
 export function CompareActions({
   slug,
@@ -15,6 +17,7 @@ export function CompareActions({
   name: string;
 }) {
   const router = useRouter();
+  const compare = useCompare();
   const remaining = slugs.filter((s) => s !== slug);
 
   return (
@@ -27,9 +30,12 @@ export function CompareActions({
       </Link>
       <button
         type="button"
-        onClick={() =>
-          router.push(remaining.length ? `/compare?slugs=${remaining.join(",")}` : "/marketplace")
-        }
+        onClick={() => {
+          // The URL drives the table, the store drives the floating bar. Drop
+          // the column from both or they disagree the moment you navigate away.
+          compare.remove(slug);
+          router.push(remaining.length ? `/compare?slugs=${remaining.join(",")}` : "/marketplace");
+        }}
         aria-label={`Remove ${name} from the comparison`}
         className="grid size-8 shrink-0 cursor-pointer place-items-center rounded-full border border-line text-subtle transition-colors hover:border-danger-line hover:bg-danger-soft hover:text-danger"
       >

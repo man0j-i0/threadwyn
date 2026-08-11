@@ -96,7 +96,7 @@ export default async function ProductPage({ params }: PageProps) {
                 <SpecRow label="Hand-feel" value={product.handFeel} />
                 <SpecRow label="Minimum order" value={`${formatNumber(product.moqMetres)} m`} mono />
                 <SpecRow label="Lead time" value={`${product.leadTimeDays} days`} mono />
-                <SpecRow label="Stock on hand" value={formatMetres(product.stockMetres)} mono />
+                <SpecRow label="Total stock on hand" value={formatMetres(product.stockMetres)} mono />
                 <SpecRow label="Colourways" value={String(product.colorways.length)} mono />
               </dl>
 
@@ -221,7 +221,7 @@ export default async function ProductPage({ params }: PageProps) {
               <SectionHeading
                 eyebrow="Comparable cloth"
                 title="Fabrics that work like this one"
-                description="Ranked on construction, weight band and price proximity — not just on sharing a word in the name."
+                description="Compare fabrics with similar construction, weight and price."
               />
             </Reveal>
             <div className="mt-9 grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">

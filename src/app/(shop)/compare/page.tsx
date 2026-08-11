@@ -177,11 +177,22 @@ export default async function ComparePage({ searchParams }: PageProps) {
         <header className="mb-8">
           <p className="eyebrow text-accent">Side by side</p>
           <h1 className="font-display mt-3 text-3xl leading-tight font-medium tracking-[-0.02em] text-ink sm:text-[2.5rem]">
-            Compare {products.length} fabrics
+            {products.length === 1
+              ? products[0]!.name
+              : `Compare ${products.length} fabrics`}
           </h1>
           <p className="mt-3 max-w-2xl text-[15px] leading-relaxed text-muted">
-            Highlighted cells are the strongest in that row. Weight and composition have no &ldquo;better&rdquo;
-            — they depend on what you&apos;re making, so nothing is marked.
+            {products.length === 1 ? (
+              <>
+                Only one fabric is shortlisted, so there is nothing to weigh it against yet. Add a second
+                from the marketplace and every row below becomes a comparison.
+              </>
+            ) : (
+              <>
+                Highlighted cells are the strongest in that row. Weight and composition have no
+                &ldquo;better&rdquo;, so nothing is marked; they depend on what you&apos;re making.
+              </>
+            )}
           </p>
         </header>
 
