@@ -12,6 +12,7 @@ import {
 import { db } from "@/lib/db";
 import { formatNumber } from "@/lib/utils";
 import { serialize } from "@/lib/serialize";
+import { readSessionCached } from "@/lib/auth/session";
 import { SiteHeader } from "@/components/layout/site-header";
 import { SiteFooter } from "@/components/layout/site-footer";
 import { HeroSearch } from "@/components/marketplace/hero-search";
@@ -65,6 +66,18 @@ const HERO_PICKS = [
 ];
 
 export default async function LandingPage() {
+  /**
+   * The page is an acquisition surface, and half of it is addressed to someone
+   * who has not signed up. Read who is here so it stops asking a signed-in
+   * buyer to create an account while the header shows their avatar — and, worse,
+   * pointing them at `/register`, which `proxy.ts` bounces them straight off.
+   *
+   * `readSessionCached` is already called by `SiteHeader` on this request, so
+   * this is a cache read rather than a second cookie parse. The page is dynamic
+   * for that reason regardless; see the note above `productSelect`.
+   */
+  const session = await readSessionCached();
+
   // One batch, not two. These queries have no dependency on each other, and the
   // database is a region away from the function — a second sequential await
   // costs another full round-trip for nothing.
@@ -302,8 +315,8 @@ export default async function LandingPage() {
                     { icon: <Ruler size={15} weight="light" />, text: "Order by each mill's MOQ" },
                     { icon: <Package size={15} weight="light" />, text: "Track your orders" },
                   ]}
-                  href="/register?role=buyer"
-                  cta="Start sourcing"
+                  href={session ? "/marketplace" : "/register?role=buyer"}
+                  cta={session ? "Explore the marketplace" : "Start sourcing"}
                 />
               </Reveal>
               <Reveal delay={0.1}>
@@ -316,8 +329,23 @@ export default async function LandingPage() {
                     { icon: <Package size={15} weight="light" />, text: "Manage stock and orders" },
                     { icon: <Certificate size={15} weight="light" />, text: "Track order status" },
                   ]}
-                  href="/register?role=supplier"
-                  cta="List your mill"
+                  // A signed-in supplier goes to their console; a signed-in
+                  // buyer gets the mill directory rather than a dead link to
+                  // registration they cannot reach.
+                  href={
+                    session?.role === "SUPPLIER"
+                      ? "/supplier"
+                      : session
+                        ? "/suppliers"
+                        : "/register?role=supplier"
+                  }
+                  cta={
+                    session?.role === "SUPPLIER"
+                      ? "Open your console"
+                      : session
+                        ? "See the mills"
+                        : "List your mill"
+                  }
                   accent
                 />
               </Reveal>
@@ -332,7 +360,9 @@ export default async function LandingPage() {
               <div aria-hidden className="pointer-events-none absolute inset-0 -z-10 opacity-[0.06]">
                 <FabricSwatch weave="JACQUARD" hex="#0F4D35" gsm={165} seed="cta" alt="" drape={false} />
               </div>
-              <p className="eyebrow text-accent">Ready when you are</p>
+              <p className="eyebrow text-accent">
+                {session ? "Pick up where you left off" : "Ready when you are"}
+              </p>
               <h2 className="font-display mx-auto mt-4 max-w-2xl text-3xl leading-[1.08] font-medium text-balance text-ink sm:text-[2.75rem]">
                 Ready to source better?
               </h2>
@@ -340,16 +370,33 @@ export default async function LandingPage() {
                 Find fabrics, compare suppliers and place your next order.
               </p>
               <div className="mt-9 flex flex-wrap items-center justify-center gap-3">
-                <ButtonLink
-                  href="/register"
-                  size="lg"
-                  trailingIcon={<ArrowRight size={14} weight="bold" />}
-                >
-                  Create an account
-                </ButtonLink>
-                <ButtonLink href="/marketplace" size="lg" variant="secondary">
-                  Browse without signing up
-                </ButtonLink>
+                {session ? (
+                  <>
+                    <ButtonLink
+                      href={session.role === "SUPPLIER" ? "/supplier" : "/dashboard"}
+                      size="lg"
+                      trailingIcon={<ArrowRight size={14} weight="bold" />}
+                    >
+                      {session.role === "SUPPLIER" ? "Open your console" : "Go to your dashboard"}
+                    </ButtonLink>
+                    <ButtonLink href="/marketplace" size="lg" variant="secondary">
+                      Browse fabrics
+                    </ButtonLink>
+                  </>
+                ) : (
+                  <>
+                    <ButtonLink
+                      href="/register"
+                      size="lg"
+                      trailingIcon={<ArrowRight size={14} weight="bold" />}
+                    >
+                      Create an account
+                    </ButtonLink>
+                    <ButtonLink href="/marketplace" size="lg" variant="secondary">
+                      Browse without signing up
+                    </ButtonLink>
+                  </>
+                )}
               </div>
             </div>
           </Reveal>
