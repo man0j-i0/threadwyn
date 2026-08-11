@@ -1,5 +1,6 @@
 import { requireSession } from "@/lib/auth/guards";
-import { handleError, ok, parseBody } from "@/lib/api/respond";
+import { handleError, ok, parseBody, rateLimit } from "@/lib/api/respond";
+import { RATE_RULES } from "@/lib/rate-limit";
 import { aiOnboardingSchema } from "@/lib/validation/schemas";
 import { extractProfile } from "@/lib/ai/onboarding";
 
@@ -14,6 +15,9 @@ export const maxDuration = 30;
  * model output reaches the database unseen.
  */
 export async function POST(req: Request) {
+  const limited = rateLimit(req, RATE_RULES.aiOnboarding);
+  if (limited) return limited;
+
   try {
     const session = await requireSession();
     const input = await parseBody(req, aiOnboardingSchema);

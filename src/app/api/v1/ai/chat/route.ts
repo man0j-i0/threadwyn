@@ -1,5 +1,6 @@
 import { ask, askAboutProduct } from "@/lib/ai/assistant";
-import { handleError, ok, parseBody } from "@/lib/api/respond";
+import { handleError, ok, parseBody, rateLimit } from "@/lib/api/respond";
+import { RATE_RULES } from "@/lib/rate-limit";
 import { aiChatSchema } from "@/lib/validation/schemas";
 import { db } from "@/lib/db";
 import { readOrCreateAnonId, readSession } from "@/lib/auth/session";
@@ -7,6 +8,9 @@ import { readOrCreateAnonId, readSession } from "@/lib/auth/session";
 export const maxDuration = 30;
 
 export async function POST(req: Request) {
+  const limited = rateLimit(req, RATE_RULES.aiChat);
+  if (limited) return limited;
+
   try {
     const input = await parseBody(req, aiChatSchema);
 

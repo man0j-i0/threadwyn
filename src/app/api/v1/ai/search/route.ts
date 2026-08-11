@@ -3,7 +3,8 @@ import { z } from "zod";
 import { buildSearchHref } from "@/lib/ai/assistant";
 import { describeFilters, parseQuery } from "@/lib/ai/nl-filters";
 import { activeProvider, complete, parseJsonLoose, providerLabel } from "@/lib/ai/provider";
-import { handleError, ok, parseBody } from "@/lib/api/respond";
+import { handleError, ok, parseBody, rateLimit } from "@/lib/api/respond";
+import { RATE_RULES } from "@/lib/rate-limit";
 import { aiSearchSchema } from "@/lib/validation/schemas";
 import type { ProductFilters } from "@/server/services/product-service";
 
@@ -49,6 +50,9 @@ Fields (all optional, omit what wasn't asked for):
 Do not invent constraints the user did not express.`;
 
 export async function POST(req: Request) {
+  const limited = rateLimit(req, RATE_RULES.aiSearch);
+  if (limited) return limited;
+
   try {
     const { query } = await parseBody(req, aiSearchSchema);
 

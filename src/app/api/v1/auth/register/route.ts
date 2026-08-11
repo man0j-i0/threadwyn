@@ -1,11 +1,15 @@
 import { db } from "@/lib/db";
 import { hashPassword } from "@/lib/auth/password";
 import { setSessionCookie } from "@/lib/auth/session";
-import { created, handleError, parseBody } from "@/lib/api/respond";
+import { created, handleError, parseBody, rateLimit } from "@/lib/api/respond";
+import { RATE_RULES } from "@/lib/rate-limit";
 import { HttpError } from "@/lib/auth/guards";
 import { registerSchema } from "@/lib/validation/schemas";
 
 export async function POST(req: Request) {
+  const limited = rateLimit(req, RATE_RULES.register);
+  if (limited) return limited;
+
   try {
     const input = await parseBody(req, registerSchema);
 

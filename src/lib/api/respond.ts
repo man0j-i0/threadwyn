@@ -1,8 +1,16 @@
 import { NextResponse } from "next/server";
+import { Prisma } from "@prisma/client";
 import { ZodError, type ZodSchema } from "zod";
 
 import { HttpError } from "@/lib/auth/guards";
 import { serialize } from "@/lib/serialize";
+import {
+  clientKey,
+  hit,
+  rateLimitEnabled,
+  rateLimitHeaders,
+  type RateRule,
+} from "@/lib/rate-limit";
 
 /**
  * Every endpoint answers in one of exactly two shapes:
@@ -24,8 +32,43 @@ export function noContent() {
   return new NextResponse(null, { status: 204 });
 }
 
-export function fail(status: number, code: string, message: string, fields?: Record<string, string>) {
-  return NextResponse.json({ error: { code, message, ...(fields ? { fields } : {}) } }, { status });
+export function fail(
+  status: number,
+  code: string,
+  message: string,
+  fields?: Record<string, string>,
+  headers?: Record<string, string>,
+) {
+  return NextResponse.json(
+    { error: { code, message, ...(fields ? { fields } : {}) } },
+    { status, ...(headers ? { headers } : {}) },
+  );
+}
+
+/**
+ * Rate-limit gate for a route handler.
+ *
+ * Returns a ready `429` when the caller is over the limit, or `null` to carry
+ * on — so a handler adds one line and an early return, and the limit is visible
+ * at the top of the route rather than buried in middleware.
+ *
+ * It deliberately does not throw. A `429` has to carry `Retry-After` and the
+ * `X-RateLimit-*` headers, and `handleError` maps exceptions to bodies, not
+ * headers.
+ */
+export function rateLimit(req: Request, rule: RateRule) {
+  if (!rateLimitEnabled()) return null;
+
+  const result = hit(clientKey(req), rule);
+  if (result.ok) return null;
+
+  return fail(
+    429,
+    "rate_limited",
+    `Too many requests. Try again in ${result.retryAfterSeconds} seconds.`,
+    undefined,
+    rateLimitHeaders(result),
+  );
 }
 
 /**
@@ -45,6 +88,15 @@ export function handleError(err: unknown) {
       if (!fields[path]) fields[path] = issue.message;
     }
     return fail(422, "validation_failed", "Please check the highlighted fields.", fields);
+  }
+
+  // A unique-constraint violation is a conflict, not a server fault. Left
+  // unmapped it reached the client as an opaque 500, which is both the wrong
+  // status and the wrong story — the request was answerable, it just lost a
+  // race. The field is never echoed back: constraint names are schema detail.
+  if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") {
+    console.error("[api] unique constraint violation", err.meta?.target);
+    return fail(409, "conflict", "That conflicted with an existing record. Please try again.");
   }
 
   console.error("[api] unhandled error", err);
