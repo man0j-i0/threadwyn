@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Field, Input, Textarea } from "@/components/ui/field";
 import { useToast } from "@/components/ui/toast";
 import { FabricSwatch } from "@/components/product/fabric-swatch";
+import { PlacingOverlay } from "./placing-overlay";
 import type { WeaveKey } from "@/lib/weave";
 
 type Line = {
@@ -44,6 +45,11 @@ type CartSummary = {
 };
 
 const STEPS = ["Delivery", "Review"] as const;
+
+/** Minimum time the placing overlay stays up, so it reads as a step rather
+ *  than a flicker. Only ever waits out the remainder of a request that already
+ *  finished — it never delays a slow one. */
+const PLACING_FLOOR_MS = 1100;
 
 export function CheckoutFlow({
   cart,
@@ -107,11 +113,16 @@ export function CheckoutFlow({
   async function placeOrder() {
     setBusy(true);
     setFormError(null);
+    const startedAt = Date.now();
     try {
       const res = await fetch("/api/v1/orders", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
+        // `cart` is the basket this page was rendered with, so this is
+        // literally the figure on the review step in front of the buyer. If
+        // the cart has moved since — another tab, a price change at the mill —
+        // the server refuses rather than quietly billing the new amount.
+        body: JSON.stringify({ ...form, expectedTotal: cart.total }),
       });
       const body = (await res.json()) as {
         data?: { orderNumber: string };
@@ -126,8 +137,20 @@ export function CheckoutFlow({
         throw new Error(body.error?.message ?? "Could not place the order.");
       }
 
+      // A transactional checkout against a warm local database answers in
+      // ~80ms, which is long enough to mount the overlay and short enough that
+      // it reads as a flicker rather than a step. Hold it to a floor so the
+      // sequence is legible, then navigate.
+      const elapsed = Date.now() - startedAt;
+      if (elapsed < PLACING_FLOOR_MS) {
+        await new Promise((resolve) => setTimeout(resolve, PLACING_FLOOR_MS - elapsed));
+      }
+
       router.push(`/orders/${body.data.orderNumber}?placed=1`);
       router.refresh();
+      // `busy` deliberately stays true. Clearing it here would tear the overlay
+      // down before the next route paints and flash the checkout form back.
+      return;
     } catch (err) {
       setFormError(err instanceof Error ? err.message : "Could not place the order.");
       toast({
@@ -135,13 +158,14 @@ export function CheckoutFlow({
         title: "Order not placed",
         description: err instanceof Error ? err.message : "Please try again.",
       });
-    } finally {
       setBusy(false);
     }
   }
 
   return (
     <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_22rem] lg:gap-10">
+      <PlacingOverlay open={busy} mills={cart.groups.length} />
+
       <div>
         {/* stepper */}
         <ol className="mb-8 flex items-center gap-3">

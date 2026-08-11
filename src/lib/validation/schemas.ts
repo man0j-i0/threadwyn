@@ -154,6 +154,18 @@ export const checkoutSchema = z.object({
   shippingPostalCode: z.string().trim().min(4, "Enter a postal code.").max(20),
   shippingCountry: z.string().trim().max(120).default("India"),
   deliveryNotes: z.string().trim().max(1000).optional().or(z.literal("")),
+  /**
+   * The total the buyer actually saw on the review step.
+   *
+   * Without it the server has no idea what the checkout page was showing, so a
+   * cart edited in another tab is ordered at the new figure without anyone
+   * noticing — the review said 40 m, the order is 50 m, and every layer behaved
+   * correctly on its own. This is the buyer's half of the agreement.
+   *
+   * Optional: a request that omits it is accepted and simply skips the check,
+   * so an older client can never be locked out by this field appearing.
+   */
+  expectedTotal: z.number().nonnegative().optional(),
 });
 
 export const orderStatusSchema = z.object({

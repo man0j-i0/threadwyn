@@ -32,6 +32,57 @@ type SerializedCart = Omit<CartData, "lines" | "groups"> & {
   }[];
 };
 
+type CartLine = SerializedCart["lines"][number];
+
+/**
+ * The single change that clears a flagged line.
+ *
+ * A warning with no action beside it makes the buyer work out the arithmetic,
+ * and sometimes there is no arithmetic to find: once a colourway drops below
+ * the mill's own minimum, every quantity is either over stock or under MOQ, so
+ * the line cannot be ordered at any number at all. Telling someone to "resolve"
+ * that is telling them to solve an equation with no answer. When the line is
+ * salvageable this offers the exact quantity that saves it; when it is not, it
+ * says so and offers the only real exit.
+ *
+ * The *decision* is the service's — this reads `line.issue` rather than
+ * comparing stock against MOQ a second time. It used to re-derive the rule
+ * here, which meant one ruleset living in two files, free to drift. The switch
+ * is exhaustive, so the moment the service emits a reason this does not handle,
+ * the build fails here instead of silently rendering a flagged line with no way
+ * to fix it. Verified by adding a sixth reason and watching it break.
+ */
+function lineFix(line: CartLine) {
+  const issue = line.issue;
+  if (!issue) return null;
+
+  switch (issue.reason) {
+    case "withdrawn":
+    case "out-of-stock":
+    case "below-moq":
+      return { kind: "remove" as const, label: "Remove from cart" };
+    case "over-stock":
+      return {
+        kind: "quantity" as const,
+        label: `Reduce to ${formatMetres(issue.available)}`,
+        value: issue.available,
+      };
+    case "under-moq":
+      return {
+        kind: "quantity" as const,
+        label: `Raise to ${formatMetres(issue.moq)}`,
+        value: issue.moq,
+      };
+    default: {
+      // `noImplicitReturns` is off, so a missing case would otherwise fall out
+      // as `undefined` and render a flagged line with no way to clear it. This
+      // makes the build fail instead.
+      const unhandled: never = issue;
+      return unhandled;
+    }
+  }
+}
+
 export function CartView({ cart: initial }: { cart: SerializedCart }) {
   const router = useRouter();
   const { toast } = useToast();
@@ -113,8 +164,9 @@ export function CartView({ cart: initial }: { cart: SerializedCart }) {
           >
             <WarningCircle size={17} weight="fill" className="mt-px shrink-0 text-warn" />
             <p className="text-[13px] leading-relaxed text-warn">
-              {cart.blockers} {pluralise(cart.blockers, "line needs", "lines need")} attention before you can
-              check out. Each one is flagged below.
+              {cart.blockers} {pluralise(cart.blockers, "line", "lines")} can&apos;t be ordered as{" "}
+              {pluralise(cart.blockers, "it stands", "they stand")}. Each is flagged below with the change
+              that clears it.
             </p>
           </div>
         ) : null}
@@ -204,17 +256,42 @@ export function CartView({ cart: initial }: { cart: SerializedCart }) {
                         </div>
 
                         {line.issues.length ? (
-                          <ul className="mt-2 space-y-1">
-                            {line.issues.map((issue) => (
-                              <li
-                                key={issue}
-                                className="flex items-start gap-1.5 text-[11.5px] leading-relaxed text-warn"
-                              >
-                                <WarningCircle size={12} weight="fill" className="mt-px shrink-0" />
-                                {issue}
-                              </li>
-                            ))}
-                          </ul>
+                          <div className="mt-2">
+                            <ul className="space-y-1">
+                              {line.issues.map((issue) => (
+                                <li
+                                  key={issue}
+                                  className="flex items-start gap-1.5 text-[11.5px] leading-relaxed text-warn"
+                                >
+                                  <WarningCircle size={12} weight="fill" className="mt-px shrink-0" />
+                                  {issue}
+                                </li>
+                              ))}
+                            </ul>
+                            {(() => {
+                              const fix = lineFix(line);
+                              if (!fix) return null;
+                              return (
+                                <button
+                                  type="button"
+                                  disabled={busyId === line.id}
+                                  onClick={() =>
+                                    fix.kind === "remove"
+                                      ? remove(line.id, line.product.name)
+                                      : setQuantity(line.id, fix.value)
+                                  }
+                                  className={cn(
+                                    "mt-2 cursor-pointer rounded-full border px-2.5 py-1 text-[11.5px] font-medium transition-colors disabled:opacity-40",
+                                    fix.kind === "remove"
+                                      ? "border-danger-line text-danger hover:bg-danger-soft"
+                                      : "border-warn-line text-warn hover:bg-warn-soft",
+                                  )}
+                                >
+                                  {fix.label}
+                                </button>
+                              );
+                            })()}
+                          </div>
                         ) : null}
 
                         <div className="mt-3.5 flex flex-wrap items-end justify-between gap-3">
@@ -341,14 +418,21 @@ export function CartView({ cart: initial }: { cart: SerializedCart }) {
             )}
 
             <div className="mt-6 space-y-2.5">
+              {/* No arrow while blocked. A disabled control that still points
+                  somewhere reads as a button that failed rather than a step
+                  that is not available yet. */}
               <Button
                 size="lg"
                 fullWidth
                 disabled={cart.blockers > 0}
                 onClick={() => router.push("/checkout")}
-                trailingIcon={<ArrowRight size={13} weight="bold" />}
+                trailingIcon={
+                  cart.blockers > 0 ? undefined : <ArrowRight size={13} weight="bold" />
+                }
               >
-                {cart.blockers > 0 ? "Resolve flagged lines" : "Continue to checkout"}
+                {cart.blockers > 0
+                  ? `Fix ${cart.blockers} ${pluralise(cart.blockers, "line", "lines")} to continue`
+                  : "Continue to checkout"}
               </Button>
               <ButtonLink href="/marketplace" variant="ghost" fullWidth>
                 Keep browsing

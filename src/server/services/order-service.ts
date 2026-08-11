@@ -28,6 +28,27 @@ function orderNumberFrom(seq: number) {
 }
 
 /**
+ * `orderNumber` is `@unique`, and it is derived from a row count plus a small
+ * random offset — so two buyers checking out at the same moment read the same
+ * count and collide roughly one time in six.
+ *
+ * The collision has to be retried around the *whole* transaction, not inside
+ * it: once a statement fails, Postgres puts the transaction in an aborted state
+ * and refuses every command until it is rolled back, so catching the error at
+ * the point of insert and trying another number does not work.
+ */
+const ORDER_NUMBER_ATTEMPTS = 5;
+
+function isOrderNumberCollision(err: unknown): boolean {
+  if (!(err instanceof Prisma.PrismaClientKnownRequestError) || err.code !== "P2002") return false;
+  // Postgres reports the field on some driver versions and the constraint name
+  // on others, so match either rather than depending on the shape.
+  const target = err.meta?.target;
+  const text = Array.isArray(target) ? target.join(",") : String(target ?? "");
+  return text.toLowerCase().includes("ordernumber");
+}
+
+/**
  * Checkout.
  *
  * Everything below happens inside one transaction: stock is re-read and
@@ -51,127 +72,218 @@ export async function placeOrder(buyerId: string, input: CheckoutInput) {
     );
   }
 
-  return db.$transaction(async (tx) => {
-    // Re-read stock inside the transaction. The cart view was a snapshot; this
-    // is the value we are actually allowed to decrement.
-    for (const line of cart.lines) {
-      const fresh = await tx.product.findUnique({
-        where: { id: line.product.id },
-        select: { stockMetres: true, status: true, name: true },
-      });
-      if (!fresh || fresh.status === "ARCHIVED") {
-        throw new HttpError(409, "unavailable", `${line.product.name} is no longer available.`);
-      }
-      if (fresh.stockMetres < line.quantityMetres) {
-        throw new HttpError(
-          409,
-          "insufficient_stock",
-          `${line.product.name} only has ${fresh.stockMetres}m left — please reduce the quantity.`,
-        );
-      }
-      if (line.colorway) {
-        const freshColour = await tx.productColorway.findUnique({
-          where: { id: line.colorway.id },
-          select: { stockMetres: true, name: true },
-        });
-        if (!freshColour || freshColour.stockMetres < line.quantityMetres) {
+  /**
+   * The basket being written must be the basket the buyer reviewed.
+   *
+   * The lock below stops two checkouts racing each other, but it cannot see
+   * what the review screen was showing — the request carries only an address.
+   * So a cart edited in another tab passed straight through: 40 m reviewed,
+   * 50 m ordered, no error anywhere, because 50 m genuinely was the cart.
+   *
+   * Comparing the reviewed total covers the whole basket in one number,
+   * including a price the mill changed underneath a quantity that did not.
+   * Checked before the transaction opens, so a doomed request never takes the
+   * lock — and it is safe to check against this snapshot rather than a fresh
+   * read, because the in-lock comparison below proves the snapshot is still
+   * what the database holds at the moment of writing.
+   *
+   * Money is compared in whole cents. `560.0000000001 !== 560` would reject a
+   * perfectly good order.
+   */
+  const cents = (n: number) => Math.round(n * 100);
+  if (input.expectedTotal !== undefined && cents(input.expectedTotal) !== cents(cart.total)) {
+    throw new HttpError(
+      409,
+      "cart_changed",
+      "Your cart changed while you were checking out. Open it again to review the total.",
+    );
+  }
+
+  let lastError: unknown;
+
+  for (let attempt = 0; attempt < ORDER_NUMBER_ATTEMPTS; attempt++) {
+    try {
+      return await db.$transaction(async (tx) => {
+        /**
+         * Serialise checkout per buyer, before anything is read or written.
+         *
+         * `getCart` above ran outside this transaction, so it is a snapshot
+         * taken before any lock existed. Two submissions arriving together —
+         * a double-click, a retried request, a second tab — would both see a
+         * full cart, and both would write an order and decrement stock. The
+         * cart is only emptied at the end of this transaction, so the "cart is
+         * already empty" guard only ever caught the slow, sequential case.
+         *
+         * `Cart.buyerId` is unique, so this locks exactly one row: the second
+         * transaction blocks here, and by the time it proceeds the first has
+         * committed and cleared the cart. It is the only lock taken, and it is
+         * always taken first, so there is no ordering cycle to deadlock on.
+         * Two different buyers never contend.
+         */
+        await tx.$queryRaw`SELECT id FROM "Cart" WHERE "buyerId" = ${buyerId} FOR UPDATE`;
+
+        // Now re-read what the snapshot claimed, inside the lock.
+        //
+        // Quantity is part of the fingerprint, not just the line id. Editing
+        // 40 m to 50 m keeps the same `cartItem.id`, so comparing ids alone
+        // saw an unchanged cart and wrote the new quantity.
+        const liveLines = (
+          await tx.cartItem.findMany({
+            where: { cartId: cart.id },
+            select: { id: true, quantityMetres: true },
+          })
+        )
+          .map((item) => `${item.id}:${item.quantityMetres}`)
+          .sort();
+
+        if (liveLines.length === 0) {
+          throw new HttpError(400, "cart_empty", "Your cart is empty.");
+        }
+
+        // The cart can also have been edited between the snapshot and the lock.
+        // Pricing, grouping and MOQ were all computed from the snapshot, so
+        // writing it now would bill for a basket the buyer no longer has.
+        const snapshotLines = cart.lines
+          .map((line) => `${line.id}:${line.quantityMetres}`)
+          .sort();
+        if (liveLines.join("|") !== snapshotLines.join("|")) {
           throw new HttpError(
             409,
-            "insufficient_stock",
-            `${line.product.name} in ${line.colorway.name} only has ${freshColour?.stockMetres ?? 0}m left.`,
+            "cart_changed",
+            "Your cart changed while you were checking out. Open it again to review the total.",
           );
         }
-      }
-    }
 
-    const count = await tx.order.count();
-    const orderNumber = orderNumberFrom(4300 + count * 7 + Math.floor(Math.random() * 6));
+        // Re-read stock inside the transaction. The cart view was a snapshot;
+        // this is the value we are actually allowed to decrement.
+        for (const line of cart.lines) {
+          const fresh = await tx.product.findUnique({
+            where: { id: line.product.id },
+            select: { stockMetres: true, status: true, name: true },
+          });
+          if (!fresh || fresh.status === "ARCHIVED") {
+            throw new HttpError(409, "unavailable", `${line.product.name} is no longer available.`);
+          }
+          if (fresh.stockMetres < line.quantityMetres) {
+            throw new HttpError(
+              409,
+              "insufficient_stock",
+              `${line.product.name} only has ${fresh.stockMetres}m left — please reduce the quantity.`,
+            );
+          }
+          if (line.colorway) {
+            const freshColour = await tx.productColorway.findUnique({
+              where: { id: line.colorway.id },
+              select: { stockMetres: true, name: true },
+            });
+            if (!freshColour || freshColour.stockMetres < line.quantityMetres) {
+              throw new HttpError(
+                409,
+                "insufficient_stock",
+                `${line.product.name} in ${line.colorway.name} only has ${freshColour?.stockMetres ?? 0}m left.`,
+              );
+            }
+          }
+        }
 
-    const order = await tx.order.create({
-      data: {
-        orderNumber,
-        buyerId,
-        subtotal: new Prisma.Decimal(cart.subtotal),
-        shippingFee: new Prisma.Decimal(cart.shippingFee),
-        tax: new Prisma.Decimal(cart.tax),
-        total: new Prisma.Decimal(cart.total),
-        shippingName: input.shippingName,
-        shippingCompany: input.shippingCompany || null,
-        shippingPhone: input.shippingPhone,
-        shippingEmail: input.shippingEmail,
-        shippingLine1: input.shippingLine1,
-        shippingLine2: input.shippingLine2 || null,
-        shippingCity: input.shippingCity,
-        shippingState: input.shippingState,
-        shippingPostalCode: input.shippingPostalCode,
-        shippingCountry: input.shippingCountry || "India",
-        deliveryNotes: input.deliveryNotes || null,
-      },
-    });
+        const count = await tx.order.count();
+        const orderNumber = orderNumberFrom(4300 + count * 7 + Math.floor(Math.random() * 6));
 
-    // One SupplierOrder per mill — each gets its own reference, status and
-    // timeline, and each supplier only ever sees their own.
-    for (const [index, group] of cart.groups.entries()) {
-      const supplierOrder = await tx.supplierOrder.create({
-        data: {
-          orderId: order.id,
-          supplierId: group.supplier.id,
-          reference: `${orderNumber}-${index + 1}`,
-          status: "PENDING",
-          subtotal: new Prisma.Decimal(group.subtotal),
-          items: {
-            create: group.lines.map((line) => ({
-              productId: line.product.id,
-              productName: line.product.name,
-              productSlug: line.product.slug,
-              colorwayName: line.colorway?.name ?? null,
-              colorwayHex: line.colorway?.hex ?? null,
-              composition: line.product.composition,
-              gsm: line.product.gsm,
-              widthCm: line.product.widthCm,
-              weave: line.product.weave,
-              unitPrice: new Prisma.Decimal(line.unitPrice),
-              quantityMetres: line.quantityMetres,
-              lineTotal: new Prisma.Decimal(line.lineTotal),
-            })),
+        const order = await tx.order.create({
+          data: {
+            orderNumber,
+            buyerId,
+            subtotal: new Prisma.Decimal(cart.subtotal),
+            shippingFee: new Prisma.Decimal(cart.shippingFee),
+            tax: new Prisma.Decimal(cart.tax),
+            total: new Prisma.Decimal(cart.total),
+            shippingName: input.shippingName,
+            shippingCompany: input.shippingCompany || null,
+            shippingPhone: input.shippingPhone,
+            shippingEmail: input.shippingEmail,
+            shippingLine1: input.shippingLine1,
+            shippingLine2: input.shippingLine2 || null,
+            shippingCity: input.shippingCity,
+            shippingState: input.shippingState,
+            shippingPostalCode: input.shippingPostalCode,
+            shippingCountry: input.shippingCountry || "India",
+            deliveryNotes: input.deliveryNotes || null,
           },
-        },
-      });
-
-      await tx.orderEvent.create({
-        data: {
-          supplierOrderId: supplierOrder.id,
-          status: "PENDING",
-          actor: "buyer",
-          note: "Order placed — awaiting the mill's confirmation",
-        },
-      });
-    }
-
-    // Decrement stock. Colourway-level first, then the product roll-up.
-    for (const line of cart.lines) {
-      if (line.colorway) {
-        await tx.productColorway.update({
-          where: { id: line.colorway.id },
-          data: { stockMetres: { decrement: line.quantityMetres } },
         });
-      }
-      const updated = await tx.product.update({
-        where: { id: line.product.id },
-        data: { stockMetres: { decrement: line.quantityMetres } },
-        select: { stockMetres: true, status: true },
+
+        // One SupplierOrder per mill — each gets its own reference, status and
+        // timeline, and each supplier only ever sees their own.
+        for (const [index, group] of cart.groups.entries()) {
+          const supplierOrder = await tx.supplierOrder.create({
+            data: {
+              orderId: order.id,
+              supplierId: group.supplier.id,
+              reference: `${orderNumber}-${index + 1}`,
+              status: "PENDING",
+              subtotal: new Prisma.Decimal(group.subtotal),
+              items: {
+                create: group.lines.map((line) => ({
+                  productId: line.product.id,
+                  productName: line.product.name,
+                  productSlug: line.product.slug,
+                  colorwayName: line.colorway?.name ?? null,
+                  colorwayHex: line.colorway?.hex ?? null,
+                  composition: line.product.composition,
+                  gsm: line.product.gsm,
+                  widthCm: line.product.widthCm,
+                  weave: line.product.weave,
+                  unitPrice: new Prisma.Decimal(line.unitPrice),
+                  quantityMetres: line.quantityMetres,
+                  lineTotal: new Prisma.Decimal(line.lineTotal),
+                })),
+              },
+            },
+          });
+
+          await tx.orderEvent.create({
+            data: {
+              supplierOrderId: supplierOrder.id,
+              status: "PENDING",
+              actor: "buyer",
+              note: "Order placed — awaiting the mill's confirmation",
+            },
+          });
+        }
+
+        // Decrement stock. Colourway-level first, then the product roll-up.
+        for (const line of cart.lines) {
+          if (line.colorway) {
+            await tx.productColorway.update({
+              where: { id: line.colorway.id },
+              data: { stockMetres: { decrement: line.quantityMetres } },
+            });
+          }
+          const updated = await tx.product.update({
+            where: { id: line.product.id },
+            data: { stockMetres: { decrement: line.quantityMetres } },
+            select: { stockMetres: true, status: true },
+          });
+          // Hitting zero flips the listing, which is what raises the supplier's
+          // inventory alert on their dashboard.
+          if (updated.stockMetres <= 0 && updated.status === "ACTIVE") {
+            await tx.product.update({ where: { id: line.product.id }, data: { status: "OUT_OF_STOCK" } });
+          }
+        }
+
+        await tx.cartItem.deleteMany({ where: { cartId: cart.id } });
+
+        return { orderNumber: order.orderNumber, orderId: order.id };
       });
-      // Hitting zero flips the listing, which is what raises the supplier's
-      // inventory alert on their dashboard.
-      if (updated.stockMetres <= 0 && updated.status === "ACTIVE") {
-        await tx.product.update({ where: { id: line.product.id }, data: { status: "OUT_OF_STOCK" } });
-      }
+    } catch (err) {
+      lastError = err;
+      // Only a duplicate order number is worth another go. Everything else —
+      // insufficient stock, a changed cart, a withdrawn fabric — is a real
+      // answer and must reach the buyer unaltered.
+      if (!isOrderNumberCollision(err)) throw err;
     }
+  }
 
-    await tx.cartItem.deleteMany({ where: { cartId: cart.id } });
-
-    return { orderNumber: order.orderNumber, orderId: order.id };
-  });
+  throw lastError;
 }
 
 /* ------------------------------------------------------------- buyer reads */

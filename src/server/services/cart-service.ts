@@ -16,6 +16,34 @@ import { money } from "@/lib/serialize";
  *    so a buyer is never silently missing something they chose.
  */
 
+/**
+ * Why a line cannot be ordered, as a value rather than a sentence.
+ *
+ * The prose in `issues` is for the buyer to read. This is for the UI to act on.
+ * They used to be the same thing: the service produced strings, and the cart
+ * re-derived the matching action by comparing stock against MOQ a second time.
+ * One ruleset in two places, free to drift the moment either side is edited.
+ *
+ * The service owns the rule; the UI owns the wording and the affordance. The
+ * union is closed and the cart switches on it exhaustively, so the moment this
+ * function *emits* a reason the cart does not handle, the build fails rather
+ * than rendering a flagged line with no way to clear it. (Declaring a variant
+ * without producing it is fine and stays quiet — TypeScript narrows `issue` to
+ * the set actually assigned, which is the behaviour we want: there is nothing
+ * to handle until something can produce it.)
+ *
+ *   below-moq   stock has fallen under the mill's own minimum, so no quantity
+ *               is both above MOQ and within stock — unorderable at any number
+ *   over-stock  more was asked for than remains, but the line is salvageable
+ *   under-moq   less was asked for than the mill will run
+ */
+export type LineIssue =
+  | { reason: "withdrawn" }
+  | { reason: "out-of-stock" }
+  | { reason: "below-moq"; available: number; moq: number }
+  | { reason: "over-stock"; available: number }
+  | { reason: "under-moq"; moq: number };
+
 // USD, matching the catalogue. Freight on a bulk fabric order is really a
 // function of weight and lane, but a flat fee above a threshold is the honest
 // simplification for a prototype that does not integrate a carrier.
@@ -57,15 +85,42 @@ export async function getCart(buyerId: string) {
     const unitPrice = Number(item.product.pricePerMetre);
     const available = item.colorway?.stockMetres ?? item.product.stockMetres;
 
+    /**
+     * A cart is a snapshot; stock is not. Between adding a line and opening
+     * this page the mill can sell the lot, cut it, or withdraw the fabric.
+     *
+     * So each message names the delta rather than the limit alone: what the
+     * buyer asked for, what is there now, and — where the two cannot be
+     * reconciled — why. The case worth spelling out is stock falling below the
+     * mill's own minimum, because then no quantity works: anything at or above
+     * MOQ exceeds stock, anything at or under stock breaches MOQ. Telling
+     * someone to "adjust" that is asking them to solve an equation with no
+     * answer, so it says the line cannot be ordered and stops there.
+     */
+    const m = (n: number) => `${n.toLocaleString("en-US")} m`;
+    const qty = item.quantityMetres;
+    const moq = item.product.moqMetres;
+
     const issues: string[] = [];
-    if (item.product.status === "ARCHIVED") issues.push("This fabric has been withdrawn by the mill.");
-    else if (item.product.status === "OUT_OF_STOCK" || item.product.stockMetres <= 0) {
-      issues.push("Out of stock — the mill needs to weave a fresh lot.");
-    } else if (item.quantityMetres > available) {
-      issues.push(`Only ${available.toLocaleString("en-US")}m available in this colourway.`);
-    }
-    if (item.quantityMetres < item.product.moqMetres) {
-      issues.push(`Below this mill's ${item.product.moqMetres}m minimum.`);
+    let issue: LineIssue | null = null;
+
+    if (item.product.status === "ARCHIVED") {
+      issue = { reason: "withdrawn" };
+      issues.push("This fabric has been withdrawn by the mill and can no longer be ordered.");
+    } else if (item.product.status === "OUT_OF_STOCK" || item.product.stockMetres <= 0) {
+      issue = { reason: "out-of-stock" };
+      issues.push(`Out of stock. Your cart has ${m(qty)}; the mill needs to weave a fresh lot.`);
+    } else if (qty > available) {
+      issues.push(`Stock changed. Your cart has ${m(qty)}, and only ${m(available)} is available now.`);
+      if (available < moq) {
+        issue = { reason: "below-moq", available, moq };
+        issues.push(`That is under this mill's ${m(moq)} minimum, so it cannot be ordered right now.`);
+      } else {
+        issue = { reason: "over-stock", available };
+      }
+    } else if (qty < moq) {
+      issue = { reason: "under-moq", moq };
+      issues.push(`Your cart has ${m(qty)}, below this mill's ${m(moq)} minimum.`);
     }
 
     return {
@@ -78,7 +133,8 @@ export async function getCart(buyerId: string) {
       product: item.product,
       available,
       issues,
-      orderable: issues.length === 0,
+      issue,
+      orderable: issue === null,
     };
   });
 
