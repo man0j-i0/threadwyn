@@ -293,7 +293,15 @@ export default async function LandingPage() {
         </section>
 
         {/* ========================================================= HOW IT WORKS */}
-        <section className="border-t border-line bg-canvas-veil/50">
+        {/* The footer carries `mt-24`, which normally sits against the CTA
+            section's own canvas background and is invisible. With the CTA
+            hidden this tinted section ends right before it, so the tint stopped
+            and 96px of bare canvas showed through above the footer photograph.
+            Pull the footer back up by that margin and pay it back as padding
+            inside the tint: same total height, one continuous colour. */}
+        <section
+          className={`border-t border-line bg-canvas-veil/50${session ? " -mb-24 pb-24" : ""}`}
+        >
           <div className="mx-auto max-w-[1400px] px-4 py-20 sm:px-6 lg:px-10 lg:py-28">
             <Reveal>
               <SectionHeading
@@ -354,15 +362,16 @@ export default async function LandingPage() {
         </section>
 
         {/* ================================================================== CTA */}
+        {/* Sign-up only. Someone already signed in has nothing to convert to,
+            and the header already offers them everywhere they can go. */}
+        {session ? null : (
         <section className="mx-auto max-w-[1400px] px-4 py-20 sm:px-6 lg:px-10 lg:py-28">
           <Reveal>
             <div className="relative overflow-hidden rounded-[var(--radius-2xl)] border border-line bg-surface px-6 py-16 text-center sm:px-16 sm:py-20">
               <div aria-hidden className="pointer-events-none absolute inset-0 -z-10 opacity-[0.06]">
                 <FabricSwatch weave="JACQUARD" hex="#0F4D35" gsm={165} seed="cta" alt="" drape={false} />
               </div>
-              <p className="eyebrow text-accent">
-                {session ? "Pick up where you left off" : "Ready when you are"}
-              </p>
+              <p className="eyebrow text-accent">Ready when you are</p>
               <h2 className="font-display mx-auto mt-4 max-w-2xl text-3xl leading-[1.08] font-medium text-balance text-ink sm:text-[2.75rem]">
                 Ready to source better?
               </h2>
@@ -370,37 +379,21 @@ export default async function LandingPage() {
                 Find fabrics, compare suppliers and place your next order.
               </p>
               <div className="mt-9 flex flex-wrap items-center justify-center gap-3">
-                {session ? (
-                  <>
-                    <ButtonLink
-                      href={session.role === "SUPPLIER" ? "/supplier" : "/dashboard"}
-                      size="lg"
-                      trailingIcon={<ArrowRight size={14} weight="bold" />}
-                    >
-                      {session.role === "SUPPLIER" ? "Open your console" : "Go to your dashboard"}
-                    </ButtonLink>
-                    <ButtonLink href="/marketplace" size="lg" variant="secondary">
-                      Browse fabrics
-                    </ButtonLink>
-                  </>
-                ) : (
-                  <>
-                    <ButtonLink
-                      href="/register"
-                      size="lg"
-                      trailingIcon={<ArrowRight size={14} weight="bold" />}
-                    >
-                      Create an account
-                    </ButtonLink>
-                    <ButtonLink href="/marketplace" size="lg" variant="secondary">
-                      Browse without signing up
-                    </ButtonLink>
-                  </>
-                )}
+                <ButtonLink
+                  href="/register"
+                  size="lg"
+                  trailingIcon={<ArrowRight size={14} weight="bold" />}
+                >
+                  Create an account
+                </ButtonLink>
+                <ButtonLink href="/marketplace" size="lg" variant="secondary">
+                  Browse without signing up
+                </ButtonLink>
               </div>
             </div>
           </Reveal>
         </section>
+        )}
       </main>
 
       <SiteFooter />
