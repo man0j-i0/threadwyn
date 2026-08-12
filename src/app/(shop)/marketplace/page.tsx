@@ -77,7 +77,13 @@ export default async function MarketplacePage({ searchParams }: PageProps) {
                   </strong>
                   . Remove any that aren&apos;t right — the results update immediately.
                 </p>
-                {chips.length ? <ActiveFilters chips={chips} className="mt-3" /> : null}
+                {chips.length ? (
+                  <ActiveFilters
+                    chips={chips}
+                    className="mt-3"
+                    basis={filtersToParams(filters).toString()}
+                  />
+                ) : null}
               </div>
             </div>
           </div>

@@ -563,9 +563,25 @@ function NumberField({
 export function ActiveFilters({
   chips,
   className,
+  basis,
 }: {
   chips: { key: string; label: string; value: string }[];
   className?: string;
+  /**
+   * The filter set these chips actually describe, serialised.
+   *
+   * Normally the chips mirror the URL, so removing one is a matter of deleting
+   * a param. On the `?ask=` path they do not: the URL holds a sentence, the
+   * filters were parsed out of it on the server, and there is no `gsmMax` in
+   * the query string to delete — so every removal deleted nothing, the page
+   * re-parsed the same sentence, and the chip came straight back.
+   *
+   * Passing the resolved set here makes the first removal *materialise* the
+   * interpretation into real params and drop `ask`. The banner goes with it,
+   * which is right: once you have edited the reading, the filters are yours
+   * rather than the parser's, and every later removal behaves normally.
+   */
+  basis?: string;
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -574,7 +590,7 @@ export function ActiveFilters({
   if (chips.length === 0) return null;
 
   function remove(key: string, value: string) {
-    const params = new URLSearchParams(searchParams.toString());
+    const params = new URLSearchParams(basis ?? searchParams.toString());
     const multi = ["category", "fibre", "weave", "supplier", "sustainability"];
     if (multi.includes(key)) {
       const next = (params.get(key) ?? "").split(",").filter((v) => v && v !== value);
