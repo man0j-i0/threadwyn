@@ -1,12 +1,58 @@
 "use client";
 
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useCallback, useState, useTransition } from "react";
+import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import { CaretDown, CheckCircle, X } from "@phosphor-icons/react";
 
 import { cn, formatMoney, titleCase } from "@/lib/utils";
 import { Spinner } from "@/components/ui/spinner";
 import { CheckboxControl } from "@/components/ui/field";
+
+/**
+ * The results column. Filtering scrolls it back into view when a shrinking
+ * page would otherwise strand you below it — see `useKeepResultsInView`.
+ */
+export const RESULTS_ID = "results";
+
+/**
+ * Keep the grid on screen when filtering shortens the page.
+ *
+ * Every control navigates with `scroll: false`, which is right for a checkbox:
+ * nobody wants to be thrown to the top of the page for ticking "In stock". But
+ * a filter that cuts sixty fabrics down to three also collapses the document
+ * height, and the browser clamps the scroll offset to the new maximum. You did
+ * not scroll — the page shrank out from under you, and you land in the footer.
+ *
+ * The rail is tall, so the controls at its foot (order terms, lead time) are
+ * the ones you reach while already scrolled well down, which is exactly when
+ * the collapse strands you. Hence "it only happens with the bottom filters".
+ *
+ * So: once a navigation has settled, if the results have gone above the
+ * viewport, put them back. Anyone who can still see the grid is left alone,
+ * and the correction is instant because it is undoing a jump, not making one.
+ */
+function useKeepResultsInView() {
+  const key = useSearchParams().toString();
+  const firstRender = useRef(true);
+
+  useEffect(() => {
+    // A fresh load or a pasted link is not a filter change — leave it alone.
+    if (firstRender.current) {
+      firstRender.current = false;
+      return;
+    }
+
+    // Measure after paint: the new grid has to be laid out before its position
+    // means anything.
+    const frame = requestAnimationFrame(() => {
+      const results = document.getElementById(RESULTS_ID);
+      if (!results || results.getBoundingClientRect().top >= 0) return;
+      results.scrollIntoView({ block: "start", behavior: "instant" });
+    });
+
+    return () => cancelAnimationFrame(frame);
+  }, [key]);
+}
 
 export type Facets = {
   categories: { value: string; label: string; count: number; accentHex: string }[];
@@ -28,6 +74,8 @@ export function FilterPanel({ facets, onApplied }: { facets: Facets; onApplied?:
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const [pending, startTransition] = useTransition();
+
+  useKeepResultsInView();
 
   // Every control used to read straight from searchParams, which only updates
   // once the server has re-rendered. So a click produced no visible change for
@@ -586,6 +634,10 @@ export function ActiveFilters({
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+
+  // Before the early return: removing the last chip shortens the page too, and
+  // hooks cannot be called conditionally.
+  useKeepResultsInView();
 
   if (chips.length === 0) return null;
 

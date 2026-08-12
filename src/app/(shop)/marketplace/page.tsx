@@ -11,7 +11,7 @@ import { ProductCard, type ProductCardData } from "@/components/product/product-
 import { ProductGridSkeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ButtonLink } from "@/components/ui/button";
-import { FilterPanel, ActiveFilters } from "@/components/marketplace/filter-panel";
+import { FilterPanel, ActiveFilters, RESULTS_ID } from "@/components/marketplace/filter-panel";
 import { MarketplaceToolbar } from "@/components/marketplace/marketplace-toolbar";
 import { Pagination } from "@/components/marketplace/pagination";
 import { AssistantDock } from "@/components/ai/assistant-dock";
@@ -103,7 +103,9 @@ export default async function MarketplacePage({ searchParams }: PageProps) {
             </div>
           </aside>
 
-          <div className="min-w-0">
+          {/* `scroll-mt` clears the sticky header when a filter change scrolls
+              this back into view. */}
+          <div id={RESULTS_ID} className="min-w-0 scroll-mt-24">
             <MarketplaceToolbar total={result.total} activeCount={activeCount} facets={facets} />
 
             {!askedIn && chips.length > 0 ? <ActiveFilters chips={chips} className="mt-4" /> : null}
