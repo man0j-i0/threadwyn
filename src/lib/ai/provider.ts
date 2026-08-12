@@ -181,6 +181,138 @@ export function activeModelId() {
   return resolvedModel ?? providerLabel();
 }
 
+/* ── vision ─────────────────────────────────────────────────────────────── */
+
+/**
+ * Vision is a different *model*, not a different provider.
+ *
+ * The chat tier runs Qwen2.5-7B-Instruct, which is text-only, so a fabric photo
+ * has to reach something multimodal. Everything else is shared: same router,
+ * same bearer token, same OpenAI-compatible body. Only the model id changes and
+ * `content` becomes an array of parts instead of a string.
+ *
+ * The default order is what actually answered when probed with a synthetic
+ * plain-weave swatch: gemma-3-27b read it as plain/pale-beige in under two
+ * seconds; Qwen2.5-VL-72B called the same swatch twill. Fastest correct answer
+ * first, a second opinion behind it. Both are bare ids — unlike the chat tier,
+ * neither needed a provider pin.
+ */
+function visionCandidates(): string[] {
+  const configured = process.env.HF_VISION_MODEL?.trim();
+  if (configured) return [configured];
+  if (activeProvider() === "ollama") {
+    return [process.env.OLLAMA_VISION_MODEL ?? "qwen2.5vl:7b"];
+  }
+  return ["google/gemma-3-27b-it", "Qwen/Qwen2.5-VL-72B-Instruct"];
+}
+
+let resolvedVisionModel: string | null = null;
+
+export function visionAvailable(): boolean {
+  return activeProvider() !== "none";
+}
+
+/** The vision model id that answered, or the one we would try first. */
+export function visionLabel(): string {
+  return resolvedVisionModel ?? visionCandidates()[0]!;
+}
+
+/**
+ * One multimodal round-trip. Same contract as `complete`: returns `null` rather
+ * than throwing, so the caller degrades instead of failing.
+ *
+ * Degrading matters more here than anywhere else in the app. Every other AI
+ * surface falls back to the rule engine, but there is no regex that reads a
+ * photograph — so the caller's fallback is the colour the *browser* measured
+ * before this was ever called. See `fabric-scan.ts`.
+ */
+export async function completeVision(opts: {
+  prompt: string;
+  /** A `data:image/…;base64,…` URI. The buyer's photo is never persisted. */
+  imageDataUri: string;
+  maxTokens?: number;
+  timeoutMs?: number;
+}): Promise<{ content: string; model: string } | null> {
+  const provider = activeProvider();
+  if (provider === "none") return null;
+
+  const { prompt, imageDataUri, maxTokens = 200 } = opts;
+  // Tighter than the chat budget, because the fallback here is instant. Gemma
+  // answers a swatch in two to three seconds; if it has not replied in fifteen
+  // it is not going to be worth waiting for, and the measured colour is already
+  // on hand. Better a fast partial answer than a slow full one.
+  const timeoutMs = opts.timeoutMs ?? (Number(process.env.AI_VISION_TIMEOUT_MS) || 15_000);
+
+  const attempts = resolvedVisionModel ? [resolvedVisionModel] : visionCandidates();
+
+  const url =
+    provider === "huggingface"
+      ? "https://router.huggingface.co/v1/chat/completions"
+      : `${process.env.OLLAMA_HOST!.replace(/\/$/, "")}/v1/chat/completions`;
+
+  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  if (provider === "huggingface") headers.Authorization = `Bearer ${process.env.HF_TOKEN}`;
+
+  for (const model of attempts) {
+    try {
+      const res = await fetch(url, {
+        method: "POST",
+        headers,
+        body: JSON.stringify({
+          model,
+          messages: [
+            {
+              role: "user",
+              content: [
+                { type: "text", text: prompt },
+                { type: "image_url", image_url: { url: imageDataUri } },
+              ],
+            },
+          ],
+          temperature: 0,
+          max_tokens: maxTokens,
+        }),
+        signal: AbortSignal.timeout(timeoutMs),
+      });
+
+      if (!res.ok) {
+        const body = await res.text().catch(() => "");
+        lastProviderError = `${res.status} ${res.statusText} — ${body.slice(0, 400)}`;
+        const worthRetrying = res.status === 400 || res.status === 404 || res.status === 422;
+        if (worthRetrying && model !== attempts[attempts.length - 1]) continue;
+        console.warn(`[ai] vision ${model} → ${res.status}; falling back to measured colour`);
+        return null;
+      }
+
+      const json = (await res.json()) as {
+        choices?: { message?: { content?: string | null } }[];
+      };
+      const content = (json.choices?.[0]?.message?.content ?? "").trim();
+
+      // A model that answers with empty content is not a working model — GLM-4.5V
+      // does exactly this, putting its answer somewhere we do not read. Treat it
+      // as a miss and let the next candidate try.
+      if (!content) {
+        lastProviderError = `${model} returned empty content`;
+        if (model !== attempts[attempts.length - 1]) continue;
+        return null;
+      }
+
+      resolvedVisionModel = model;
+      lastProviderError = null;
+      return { content, model };
+    } catch (err) {
+      lastProviderError = err instanceof Error ? err.message : String(err);
+      if (model === attempts[attempts.length - 1]) {
+        console.warn("[ai] vision call failed; falling back to measured colour", err);
+        return null;
+      }
+    }
+  }
+
+  return null;
+}
+
 export function parseJsonLoose<T>(raw: string): T | null {
   if (!raw) return null;
   const fenced = raw.match(/```(?:json)?\s*([\s\S]*?)```/);

@@ -34,6 +34,9 @@ export const RATE_RULES = {
   aiChat: { name: "ai-chat", limit: 20, windowMs: MINUTE },
   aiSearch: { name: "ai-search", limit: 30, windowMs: MINUTE },
   aiOnboarding: { name: "ai-onboarding", limit: 20, windowMs: MINUTE },
+  // Tighter than the text routes: a vision call ships an image and bills for
+  // far more tokens, and nobody scans ten swatches a minute by hand.
+  aiFabricScan: { name: "ai-fabric-scan", limit: 10, windowMs: MINUTE },
 } as const satisfies Record<string, RateRule>;
 
 type Counter = { count: number; resetAt: number };

@@ -359,6 +359,25 @@ export async function getProductsForCompare(slugs: string[]) {
   return slugs.map((s) => bySlug.get(s)).filter((r): r is NonNullable<typeof r> => Boolean(r));
 }
 
+/**
+ * Every distinct colourway on a live fabric, as name + hex.
+ *
+ * The fabric scan names a measured colour against this rather than a hardcoded
+ * palette, so the colour it reports is always one a supplier actually listed —
+ * and therefore one that appears in `searchText` and can be searched for.
+ * Colourways with no stock are excluded: naming a colour nobody can ship is
+ * worse than naming the nearest one they can.
+ */
+export async function getColourwayPalette(): Promise<{ name: string; hex: string }[]> {
+  const rows = await db.productColorway.findMany({
+    where: { stockMetres: { gt: 0 }, product: { status: "ACTIVE" } },
+    select: { name: true, hex: true },
+    distinct: ["name"],
+    orderBy: { name: "asc" },
+  });
+  return rows;
+}
+
 export async function incrementViewCount(id: string) {
   // Fire-and-forget: a failed counter must never break a product page.
   await db.product.update({ where: { id }, data: { viewCount: { increment: 1 } } }).catch(() => {});

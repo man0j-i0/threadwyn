@@ -189,6 +189,28 @@ export const aiSearchSchema = z.object({
   query: z.string().trim().min(1).max(500),
 });
 
+/**
+ * A fabric photo, inline.
+ *
+ * The image arrives as a data URI rather than multipart because it is never
+ * stored — it goes to the model and is dropped, so there is nothing to stream
+ * to disk. The browser downsizes and re-encodes before posting; the ceiling
+ * here is the backstop, sized so a compressed 768px WebP always fits and a
+ * full-resolution phone photo never does.
+ */
+export const aiFabricScanSchema = z.object({
+  image: z
+    .string()
+    .regex(/^data:image\/(jpeg|png|webp|avif);base64,[A-Za-z0-9+/=]+$/, "Upload a JPEG, PNG, WebP or AVIF image.")
+    .max(1_400_000, "That image is too large. Try a smaller photo."),
+  /** Dominant colour, measured in the browser. */
+  measured: z.object({
+    r: z.number().int().min(0).max(255),
+    g: z.number().int().min(0).max(255),
+    b: z.number().int().min(0).max(255),
+  }),
+});
+
 export const aiOnboardingSchema = z.object({
   role: z.enum(["BUYER", "SUPPLIER"]),
   transcript: z

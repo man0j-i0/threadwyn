@@ -1,6 +1,8 @@
+import Link from "next/link";
 import {
   ArrowRight,
   ArrowsLeftRight,
+  Camera,
   Certificate,
   ClipboardText,
   Package,
@@ -171,6 +173,20 @@ export default async function LandingPage() {
 
               <Reveal delay={0.62} className="mt-9">
                 <HeroSearch />
+
+                {/* The other way in. Search assumes you can name what you
+                    want; a buyer holding a swatch off a garment usually
+                    cannot. Kept deliberately quiet — it is the second door,
+                    not a rival to the search box. */}
+                <Link
+                  href="/scan"
+                  className="group mt-3.5 inline-flex items-center gap-2 text-[13.5px] text-muted transition-colors hover:text-ink"
+                >
+                  <Camera size={15} weight="light" className="text-accent" />
+                  <span>
+                    Got a sample? <span className="text-ink underline decoration-line underline-offset-4 group-hover:decoration-brand">Scan the fabric instead</span>
+                  </span>
+                </Link>
               </Reveal>
 
               <Reveal delay={0.75}>
