@@ -219,8 +219,13 @@ discriminant — is described in [`06_hardening_plan.md`](06_hardening_plan.md) 
 is in this release. Security headers and DB-backed integration tests are the two
 steps of that plan deliberately **not** taken; see its §4.
 
-**Still open:** supplier ratings are seeded rather than computed, `--ease-back` is
-a dead CSS token, and `compareAtPrice` is a retained-but-unwritten column.
+**Still open:** supplier ratings are seeded rather than computed, and
+`compareAtPrice` is a retained-but-unwritten column.
+
+`--ease-back` is gone. It was defined once and called from nowhere, and the
+curve overshoots past its endpoint — a bounce, which reads as dated next to the
+deceleration curves the rest of the app uses. Deleting it was cheaper than
+deciding what it should have been.
 
 ---
 
