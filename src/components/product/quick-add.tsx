@@ -29,7 +29,7 @@ export function QuickAdd({
   disabled?: boolean;
   className?: string;
 }) {
-  const { add, busy, done } = useAddToCart();
+  const { add, busy, done, locked } = useAddToCart();
 
   return (
     <button
@@ -38,7 +38,9 @@ export function QuickAdd({
         if (disabled) return;
         void add({ productId, productName, colorwayId, quantityMetres: moq });
       }}
-      disabled={disabled || busy}
+      // `locked`, not `busy`: the tick stays up for a moment after the request
+      // finishes, and a click landing in that window added the line twice.
+      disabled={disabled || locked}
       aria-label={disabled ? `${productName} is unavailable` : `Add ${moq} metres of ${productName} to cart`}
       className={cn(
         "grid size-9 cursor-pointer place-items-center rounded-full border",

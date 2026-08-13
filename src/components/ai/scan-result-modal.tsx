@@ -150,10 +150,15 @@ export function ScanResultModal({
     <AnimatePresence>
       {open && result ? (
         <div className="fixed inset-0 z-80">
-          {/* Outside the scroll container on purpose. Nested inside it, the
-              blur was lost the moment the detail panel made the content taller
-              than the viewport — a scrolling ancestor plus `backdrop-filter` is
-              a fragile combination, and the scrim is not what should scroll. */}
+          {/* Two layers, and they cannot be one.
+              `backdrop-filter` samples whatever is painted behind the element —
+              but an element that is animating its own `opacity` becomes its own
+              backdrop root, with nothing behind it, so the blur silently does
+              nothing. Framer also leaves `will-change: opacity` behind, which
+              has the same effect after the animation settles. So the blur lives
+              on a plain element that never animates, and only the tint fades. */}
+          <div aria-hidden className="absolute inset-0 backdrop-blur-md" />
+
           <motion.button
             type="button"
             aria-label="Close scan result"
@@ -162,7 +167,7 @@ export function ScanResultModal({
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.25 }}
-            className="absolute inset-0 cursor-default bg-[#191713]/60 backdrop-blur-md"
+            className="absolute inset-0 cursor-default bg-[#191713]/60"
           />
 
           <div className="absolute inset-0 flex items-start justify-center overflow-y-auto p-3 sm:p-6">
@@ -578,7 +583,7 @@ function DeckButton({
 /* ── one fabric, in full ─────────────────────────────────────────────────── */
 
 function Detail({ match, onClose }: { match: ScanMatch; onClose: () => void }) {
-  const { add, busy, done } = useAddToCart();
+  const { add, busy, done, locked } = useAddToCart();
   // Safe to initialise from props: the parent keys this by fabric, so a
   // different match is a different instance.
   const [colourway, setColourway] = useState(match.colorways[0] ?? null);
@@ -668,7 +673,10 @@ function Detail({ match, onClose }: { match: ScanMatch; onClose: () => void }) {
       <div className="mt-auto flex flex-wrap items-center gap-3 border-t border-line px-6 py-5 sm:px-7">
         <Button
           type="button"
-          disabled={!orderable}
+          // Stays disabled through the whole confirmation, not just the
+          // request. Otherwise the ~1.8s the label spends reading "Added" is
+          // an open window to add the same line again, and again.
+          disabled={!orderable || locked}
           onClick={() =>
             void add({
               productId: match.id,
@@ -685,9 +693,10 @@ function Detail({ match, onClose }: { match: ScanMatch; onClose: () => void }) {
 
         <Link
           href={`/product/${match.slug}`}
-          className="text-[13px] text-brand-ink underline decoration-line underline-offset-4 transition-colors hover:decoration-brand"
+          className="inline-flex items-center gap-1.5 text-[13px] text-brand-ink underline decoration-line underline-offset-4 transition-colors hover:decoration-brand"
         >
-          Full product page
+          View more
+          <ArrowRight size={12} weight="bold" />
         </Link>
       </div>
     </div>

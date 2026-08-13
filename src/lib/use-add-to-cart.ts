@@ -32,7 +32,11 @@ export function useAddToCart() {
 
   const add = useCallback(
     async ({ productId, productName, colorwayId, quantityMetres, returnTo }: AddToCartInput) => {
-      if (busy) return false;
+      // `done` is part of the guard, not just `busy`. The request finishes in
+      // well under the 1.8s the button spends saying "Added", and without this
+      // every click in that window queued another line — a spammed button
+      // quietly ordering five times the metres the buyer asked for.
+      if (busy || done) return false;
       setBusy(true);
 
       try {
@@ -90,8 +94,14 @@ export function useAddToCart() {
         setBusy(false);
       }
     },
-    [busy, router, toast],
+    [busy, done, router, toast],
   );
 
-  return { add, busy: busy || pending, done };
+  return {
+    add,
+    busy: busy || pending,
+    done,
+    /** What a control should disable on: in flight, or still confirming. */
+    locked: busy || pending || done,
+  };
 }
