@@ -84,6 +84,17 @@ export async function POST(req: Request) {
 
     const shown = widest ?? { filters: scan.filters, total: 0, relaxed: [] };
 
+    // How much of a match these actually are.
+    //
+    // The ladder's last rung drops every constraint, so `searchProducts` falls
+    // through to the whole active catalogue and something always comes back.
+    // Left ungraded, four popular fabrics get presented as "the closest to your
+    // swatch" when they are closest to nothing — the one genuinely misleading
+    // thing the feature could do. `none` lets the page say so.
+    const stillConstrained = Boolean(shown.filters.q) || Boolean(shown.filters.weave?.length);
+    const quality: "exact" | "near" | "none" =
+      exact > 0 ? "exact" : stillConstrained ? "near" : "none";
+
     return ok({
       ...scan,
       // The filters that actually produced these rows, not the ones the reading
@@ -100,6 +111,7 @@ export async function POST(req: Request) {
       // Lets the page distinguish "no exact match, here is the nearest" from
       // "one exact match, plus near misses to fill the list".
       exact,
+      quality,
       matches: picked,
       total: shown.total,
     });

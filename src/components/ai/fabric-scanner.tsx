@@ -1,59 +1,19 @@
 "use client";
 
-import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
-import { ArrowRight, ArrowsClockwise, ImageSquare, UploadSimple } from "@phosphor-icons/react";
+import { ArrowRight, ArrowsClockwise, Check, ImageSquare, UploadSimple } from "@phosphor-icons/react";
 
-import type { WeaveKey } from "@/lib/weave";
-import { cn, formatMetres, formatPerMetre, pluralise } from "@/lib/utils";
+import { cn, pluralise } from "@/lib/utils";
 import { Button, ButtonLink } from "@/components/ui/button";
-import { FabricSwatch } from "@/components/product/fabric-swatch";
 import { useToast } from "@/components/ui/toast";
+import { ScanResultModal, type ScanReadingView, type ScanResultView } from "@/components/ai/scan-result-modal";
 
 /* ── shapes returned by /api/v1/ai/fabric-scan ───────────────────────────── */
 
-type Certainty = "confident" | "likely" | "uncertain";
-
-type ScanReading = {
-  key: string;
-  label: string;
-  value: string;
-  certainty: Certainty;
-  source: "pixels" | "model";
-  note?: string;
-};
-
-type Match = {
-  id: string;
-  slug: string;
-  name: string;
-  weave: WeaveKey;
-  gsm: number;
-  widthCm: number;
-  pricePerMetre: number;
-  stockMetres: number;
-  moqMetres: number;
-  supplier: { businessName: string; city: string };
-  colorways: { id: string; name: string; hex: string }[];
-};
-
-type ScanResult = {
-  readings: ScanReading[];
-  chips: { key: string; label: string; value: string }[];
-  href: string;
-  mode: "vision" | "colour-only";
-  model: string;
-  measuredHex: string;
-  matchedHex: string | null;
-  withheld: string[];
-  /** Readings given up to fill the list. */
-  relaxed: string[];
-  /** How many fabrics matched every reading. */
-  exact: number;
-  matches: Match[];
-  total: number;
-};
+// Defined once, beside the panel that renders most of them.
+type Certainty = ScanReadingView["certainty"];
+type ScanResult = ScanResultView;
 
 const MAX_BYTES = 8 * 1024 * 1024;
 const ACCEPT = ["image/jpeg", "image/png", "image/webp", "image/avif"];
@@ -79,6 +39,9 @@ export function FabricScanner() {
   const [busy, setBusy] = useState(false);
   const [dragging, setDragging] = useState(false);
   const [result, setResult] = useState<ScanResult | null>(null);
+  // The result arrives in a modal. Closing it does not throw the scan away —
+  // the reading stays on the page underneath, with a way back into the matches.
+  const [matchesOpen, setMatchesOpen] = useState(false);
 
   const reset = useCallback(() => {
     setPreview((url) => {
@@ -130,7 +93,10 @@ export function FabricScanner() {
           });
           return;
         }
-        if (json.data) setResult(json.data);
+        if (json.data) {
+          setResult(json.data);
+          setMatchesOpen(true);
+        }
       } catch {
         toast({ tone: "error", title: "Couldn't read that photo", description: "Check your connection and retry." });
       } finally {
@@ -149,128 +115,194 @@ export function FabricScanner() {
   const split = stage === "result";
 
   return (
-    <div className={cn("grid gap-10", split && "lg:grid-cols-[minmax(0,400px)_1fr] lg:gap-14")}>
-      {/* ── the sample ─────────────────────────────────────────────────── */}
-      <div className={cn(split && "lg:sticky lg:top-24 lg:self-start")}>
-        <label
-          onDragOver={(e) => {
-            e.preventDefault();
-            setDragging(true);
-          }}
-          onDragLeave={() => setDragging(false)}
-          onDrop={(e) => {
-            e.preventDefault();
-            setDragging(false);
-            const file = e.dataTransfer.files?.[0];
-            if (file) void run(file);
-          }}
+    <>
+      <Stepper stage={stage} />
+
+      <div className={cn("grid gap-10", split && "lg:grid-cols-[minmax(0,400px)_1fr] lg:gap-14")}>
+        {/* ── the sample ─────────────────────────────────────────────────── */}
+        <section
           className={cn(
-            "group relative block w-full overflow-hidden rounded-[var(--radius-xl)]",
-            "transition-[border-color,background-color,box-shadow,height] duration-500 ease-[var(--ease-out-expo)]",
-            // Full-bleed until it has done its job, then a portrait frame in
-            // the sidebar. Heights rather than aspect ratios, because a
-            // full-width 16:9 on a 1100px page is a 620px hole.
-            split ? "aspect-[4/5]" : "h-[320px] sm:h-[440px] lg:h-[520px]",
-            busy ? "cursor-wait" : "cursor-pointer",
-            preview
-              ? // Holding a photograph: a solid frame that sits above the page.
-                "border border-line-strong bg-surface shadow-[var(--shadow-md)]"
-              : // Empty: a well you drop into, so it reads as recessed rather
-                // than as another card. `border-line` was almost invisible in
-                // both themes — `line-strong` is the system's answer for a
-                // border that has to be seen, and the inset shadow gives the
-                // edge somewhere to fall away to.
-                cn(
-                  "border-2 border-dashed bg-sunken",
-                  "shadow-[inset_0_2px_14px_-6px_rgba(0,0,0,0.22)]",
-                  dragging
-                    ? "border-brand bg-brand-soft/60 shadow-[inset_0_2px_18px_-6px_rgba(0,0,0,0.24)]"
-                    : "border-line-strong hover:border-brand-line",
-                ),
+            // The same panel checkout puts its form in, so the two flows read as
+            // one product rather than two.
+            "rounded-[var(--radius-xl)] border border-line bg-surface p-5 sm:p-7",
+            split && "lg:sticky lg:top-24 lg:self-start",
           )}
         >
-          <input
-            ref={inputRef}
-            type="file"
-            accept={ACCEPT.join(",")}
-            className="sr-only"
-            disabled={busy}
-            onChange={(e) => {
-              const file = e.target.files?.[0];
+          <h2 className="font-display text-xl font-medium text-ink">
+            {split ? "Your sample" : "Add a swatch"}
+          </h2>
+          {!split ? (
+            <p className="mt-1.5 text-[13px] text-subtle">
+              A close-up of the weave reads best. Read once, then discarded — never stored.
+            </p>
+          ) : null}
+
+          <div className="mt-6">
+          <label
+            onDragOver={(e) => {
+              e.preventDefault();
+              setDragging(true);
+            }}
+            onDragLeave={() => setDragging(false)}
+            onDrop={(e) => {
+              e.preventDefault();
+              setDragging(false);
+              const file = e.dataTransfer.files?.[0];
               if (file) void run(file);
             }}
-          />
-
-          {preview ? (
-            /* A `blob:` URL for the user's own file — never persisted, never remote.
-               `next/image` would have nothing to fetch, optimise or cache here. */
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={preview} alt="Your fabric sample" className="absolute inset-0 size-full object-cover" />
-          ) : (
-            <>
-              {/* Real cloth behind the prompt rather than an empty rectangle.
-                  It is the same renderer the catalogue uses, so the texture is
-                  a woven structure and not a stock pattern. */}
-              {/* Warp and weft at a fixed 7px, in CSS rather than SVG.
-                  `FabricSwatch` was the obvious choice and the wrong one: it
-                  slices a 400px viewBox to fill its box, so across a 1020px
-                  dropzone the tile magnified into a transparency-grid
-                  checkerboard — the single texture a fabric app must not show.
-                  A repeating gradient is pinned to real pixels, so the thread
-                  count looks the same at any width. */}
-              <span
-                aria-hidden
-                className="absolute inset-0 opacity-50 transition-opacity duration-500 group-hover:opacity-75"
-                style={{
-                  backgroundImage:
-                    "repeating-linear-gradient(90deg, var(--line-strong) 0 1px, transparent 1px 7px)," +
-                    "repeating-linear-gradient(0deg, var(--line-strong) 0 1px, transparent 1px 7px)",
-                }}
-              />
-              <Reticle />
-              <span className="absolute inset-0 grid place-items-center px-8 text-center">
-                <span>
-                  <span className="mx-auto grid size-14 place-items-center rounded-full border border-line bg-surface/80 backdrop-blur-sm transition-transform duration-500 ease-[var(--ease-out-expo)] group-hover:-translate-y-0.5">
-                    <ImageSquare size={22} weight="light" className="text-brand-ink" />
-                  </span>
-                  <span className="font-display mt-5 block text-[22px] tracking-[-0.015em] text-ink">
-                    Drop a fabric photo
-                  </span>
-                  <span className="mt-2 block text-[13px] text-subtle">A close-up of the weave reads best</span>
-                </span>
-              </span>
-            </>
-          )}
-
-          <AnimatePresence>{busy ? <AnalysisOverlay /> : null}</AnimatePresence>
-        </label>
-
-        <div className="mt-5 flex flex-wrap items-center gap-2">
-          <Button
-            type="button"
-            variant={preview ? "secondary" : "primary"}
-            size={split ? "sm" : "md"}
-            loading={busy}
-            icon={!busy ? <UploadSimple size={14} weight="bold" /> : undefined}
-            onClick={() => inputRef.current?.click()}
+            className={cn(
+              "group relative block w-full overflow-hidden rounded-[var(--radius-xl)]",
+              "transition-[border-color,background-color,box-shadow,height] duration-500 ease-[var(--ease-out-expo)]",
+              // Full-bleed until it has done its job, then a portrait frame in
+              // the sidebar. Heights rather than aspect ratios, because a
+              // full-width 16:9 on a 1100px page is a 620px hole.
+              split ? "aspect-[4/5]" : "h-[320px] sm:h-[440px] lg:h-[520px]",
+              busy ? "cursor-wait" : "cursor-pointer",
+              preview
+                ? // Holding a photograph: a solid frame that sits above the page.
+                  "border border-line-strong bg-surface shadow-[var(--shadow-md)]"
+                : // Empty: a well you drop into, so it reads as recessed rather
+                  // than as another card. `border-line` was almost invisible in
+                  // both themes — `line-strong` is the system's answer for a
+                  // border that has to be seen, and the inset shadow gives the
+                  // edge somewhere to fall away to.
+                  cn(
+                    "border-2 border-dashed bg-sunken",
+                    "shadow-[inset_0_2px_14px_-6px_rgba(0,0,0,0.22)]",
+                    dragging
+                      ? "border-brand bg-brand-soft/60 shadow-[inset_0_2px_18px_-6px_rgba(0,0,0,0.24)]"
+                      : "border-line-strong hover:border-brand-line",
+                  ),
+            )}
           >
-            {busy ? "Reading the weave" : preview ? "Try another" : "Choose a photo"}
-          </Button>
-          {preview && !busy ? (
-            <Button type="button" variant="ghost" size="sm" onClick={reset} icon={<ArrowsClockwise size={14} />}>
-              Clear
+            <input
+              ref={inputRef}
+              type="file"
+              accept={ACCEPT.join(",")}
+              className="sr-only"
+              disabled={busy}
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) void run(file);
+              }}
+            />
+
+            {preview ? (
+              /* A `blob:` URL for the user's own file — never persisted, never remote.
+                 `next/image` would have nothing to fetch, optimise or cache here. */
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={preview} alt="Your fabric sample" className="absolute inset-0 size-full object-cover" />
+            ) : (
+              <>
+                {/* Real cloth behind the prompt rather than an empty rectangle.
+                    It is the same renderer the catalogue uses, so the texture is
+                    a woven structure and not a stock pattern. */}
+                {/* Warp and weft at a fixed 7px, in CSS rather than SVG.
+                    `FabricSwatch` was the obvious choice and the wrong one: it
+                    slices a 400px viewBox to fill its box, so across a 1020px
+                    dropzone the tile magnified into a transparency-grid
+                    checkerboard — the single texture a fabric app must not show.
+                    A repeating gradient is pinned to real pixels, so the thread
+                    count looks the same at any width. */}
+                <span
+                  aria-hidden
+                  className="absolute inset-0 opacity-50 transition-opacity duration-500 group-hover:opacity-75"
+                  style={{
+                    backgroundImage:
+                      "repeating-linear-gradient(90deg, var(--line-strong) 0 1px, transparent 1px 7px)," +
+                      "repeating-linear-gradient(0deg, var(--line-strong) 0 1px, transparent 1px 7px)",
+                  }}
+                />
+                <Reticle />
+                <span className="absolute inset-0 grid place-items-center px-8 text-center">
+                  <span>
+                    <span className="mx-auto grid size-14 place-items-center rounded-full border border-line bg-surface/80 backdrop-blur-sm transition-transform duration-500 ease-[var(--ease-out-expo)] group-hover:-translate-y-0.5">
+                      <ImageSquare size={22} weight="light" className="text-brand-ink" />
+                    </span>
+                    <span className="font-display mt-5 block text-[22px] tracking-[-0.015em] text-ink">
+                      Drop a fabric photo
+                    </span>
+                    <span className="mt-2 block text-[13px] text-subtle">A close-up of the weave reads best</span>
+                  </span>
+                </span>
+              </>
+            )}
+
+            <AnimatePresence>{busy ? <AnalysisOverlay /> : null}</AnimatePresence>
+          </label>
+          </div>
+
+          <div className="mt-5 flex flex-wrap items-center gap-2">
+            <Button
+              type="button"
+              variant={preview ? "secondary" : "primary"}
+              size={split ? "sm" : "md"}
+              loading={busy}
+              icon={!busy ? <UploadSimple size={14} weight="bold" /> : undefined}
+              onClick={() => inputRef.current?.click()}
+            >
+              {busy ? "Reading the weave" : preview ? "Try another" : "Choose a photo"}
             </Button>
+            {preview && !busy ? (
+              <Button type="button" variant="ghost" size="sm" onClick={reset} icon={<ArrowsClockwise size={14} />}>
+                Clear
+              </Button>
+            ) : null}
+          </div>
+        </section>
+
+        {/* ── the reading ────────────────────────────────────────────────── */}
+        <div className="min-w-0">
+          {stage === "idle" ? <Primer /> : null}
+          {stage === "result" && result ? (
+            <Reading result={result} onOpenMatches={() => setMatchesOpen(true)} />
           ) : null}
-          <span className="text-[12px] text-subtle">Read once, then discarded. Never stored.</span>
         </div>
       </div>
 
-      {/* ── the reading ────────────────────────────────────────────────── */}
-      <div className="min-w-0">
-        {stage === "idle" ? <Primer /> : null}
-        {stage === "result" && result ? <Reading result={result} /> : null}
-      </div>
-    </div>
+      <ScanResultModal result={result} open={matchesOpen} onClose={() => setMatchesOpen(false)} />
+    </>
+  );
+}
+
+const STEPS = ["Upload", "Read", "Match"] as const;
+
+/**
+ * The same stepper checkout uses, down to the sizes and the tick.
+ *
+ * Copied rather than approximated: two flows in one product that both walk a
+ * visitor through numbered stages should not each invent their own indicator.
+ * If this and checkout drift, they should drift together — which is an argument
+ * for extracting it, once a third flow needs one.
+ */
+function Stepper({ stage }: { stage: "idle" | "reading" | "result" }) {
+  const active = stage === "idle" ? 0 : stage === "reading" ? 1 : 2;
+
+  return (
+    <ol className="mb-8 flex items-center gap-3">
+      {STEPS.map((label, i) => {
+        const done = i < active;
+        const current = i === active;
+        return (
+          <li key={label} className="flex flex-1 items-center gap-3">
+            <span
+              className={cn(
+                "grid size-7 shrink-0 place-items-center rounded-full border font-mono text-[11px] transition-colors duration-300",
+                done
+                  ? "border-brand bg-brand text-white"
+                  : current
+                    ? "border-brand bg-brand-soft text-brand-ink"
+                    : "border-line bg-surface text-subtle",
+              )}
+            >
+              {done ? <Check size={12} weight="bold" /> : i + 1}
+            </span>
+            <span className={cn("text-[13px]", current ? "font-medium text-ink" : "text-subtle")}>{label}</span>
+            {i < STEPS.length - 1 ? <span className="h-px flex-1 bg-line" /> : null}
+          </li>
+        );
+      })}
+    </ol>
   );
 }
 
@@ -303,7 +335,7 @@ function Reticle() {
 
 /* ── result ──────────────────────────────────────────────────────────────── */
 
-function Reading({ result }: { result: ScanResult }) {
+function Reading({ result, onOpenMatches }: { result: ScanResult; onOpenMatches: () => void }) {
   const colour = result.readings.find((r) => r.key === "colour");
   const inferred = result.readings.filter((r) => r.key !== "colour").slice(0, 3);
 
@@ -369,138 +401,22 @@ function Reading({ result }: { result: ScanResult }) {
 
       <p className="mt-3.5 text-[12.5px] leading-relaxed text-subtle">{result.withheld[0]}</p>
 
-      {/* ── matches ──────────────────────────────────────────────────── */}
-      <div className="mt-9">
-        <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-          <h2 className="font-display text-[22px] font-medium tracking-[-0.01em] text-ink">
-            {result.total > 0 ? "Closest fabrics you can order" : "No close match in stock"}
-          </h2>
-          {result.total > 0 ? (
-            <p className="font-mono text-[11px] text-subtle tnum">{result.total} in the catalogue</p>
-          ) : null}
-        </div>
-
-        {result.relaxed.length ? (
-          <p className="mt-3 rounded-[var(--radius-md)] border border-line bg-sunken px-3.5 py-2.5 text-[12.5px] leading-relaxed text-muted">
-            {result.exact > 0 ? (
-              <>
-                Only {result.exact} {pluralise(result.exact, "fabric")} matched every reading
-                {result.exact === 1 ? " — it's first below" : ""}. The rest are the closest with{" "}
-                {formatList(result.relaxed)} set aside.
-              </>
-            ) : (
-              <>
-                Nothing in stock matched every reading, so {formatList(result.relaxed)}{" "}
-                {result.relaxed.length > 1 ? "were" : "was"} set aside. These are the closest on what&apos;s
-                left.
-              </>
-            )}
-          </p>
-        ) : null}
-
-        {result.chips.length ? (
-          <div className="mt-3 flex flex-wrap gap-1.5">
-            {result.chips.map((c) => (
-              <span
-                key={`${c.key}:${c.value}`}
-                className="rounded-full border border-line bg-surface px-2.5 py-1 text-[11.5px] text-muted"
-              >
-                {c.label}
-              </span>
-            ))}
-          </div>
-        ) : null}
-
-        {result.matches.length ? (
-          <>
-            {/* The payoff, sized like it. These were thin rows under a wall of
-                caveats, which put the least important thing on the page at the
-                top and the reason the buyer came at the bottom. Each card now
-                renders the actual cloth — `FabricSwatch` draws the real weave
-                at the real colour, so a twill looks like a twill. */}
-            <ul className="mt-5 grid gap-4 sm:grid-cols-2">
-              {result.matches.map((m, i) => (
-                <li key={m.id}>
-                  <Link
-                    href={`/product/${m.slug}`}
-                    className={cn(
-                      "group flex h-full flex-col overflow-hidden rounded-[var(--radius-xl)] border bg-surface",
-                      "transition-[border-color,box-shadow] duration-300 ease-[var(--ease-out-expo)]",
-                      "hover:border-brand-line hover:shadow-[0_6px_20px_-8px_rgba(0,0,0,0.18)]",
-                      // The exact hit leads and is marked; the rest are near misses.
-                      i === 0 && result.exact > 0 ? "border-brand-line" : "border-line",
-                    )}
-                  >
-                    <span className="relative block aspect-[16/10] overflow-hidden bg-sunken">
-                      <FabricSwatch
-                        weave={m.weave}
-                        hex={m.colorways[0]?.hex ?? "#C9C2B4"}
-                        gsm={m.gsm}
-                        seed={m.slug}
-                        alt={`${m.name} in ${m.colorways[0]?.name ?? "its first colourway"}`}
-                        className="transition-transform duration-500 ease-[var(--ease-out-expo)] group-hover:scale-[1.03]"
-                      />
-                      {i === 0 && result.exact > 0 ? (
-                        <span className="absolute top-3 left-3 rounded-full bg-brand px-2.5 py-1 font-mono text-[10px] tracking-[0.04em] text-white uppercase">
-                          Closest
-                        </span>
-                      ) : null}
-                    </span>
-
-                    <span className="flex flex-1 flex-col p-4 sm:p-5">
-                      <span className="font-display block text-[17px] leading-snug tracking-[-0.01em] text-ink">
-                        {m.name}
-                      </span>
-                      <span className="mt-1 block truncate text-[12.5px] text-subtle">
-                        {m.supplier.businessName} · {m.supplier.city}
-                      </span>
-
-                      <span className="mt-auto flex items-end justify-between gap-3 border-t border-line pt-3.5">
-                        <span className="font-mono text-[11.5px] leading-relaxed text-subtle tnum">
-                          {m.gsm} gsm · {m.widthCm} cm
-                          <br />
-                          {formatMetres(m.stockMetres)} in stock
-                        </span>
-                        <span className="text-right">
-                          <span className="font-mono block text-[17px] leading-none text-ink tnum">
-                            {formatPerMetre(m.pricePerMetre)}
-                          </span>
-                          <span className="mt-1.5 block font-mono text-[10.5px] text-subtle tnum">
-                            min {formatMetres(m.moqMetres)}
-                          </span>
-                        </span>
-                      </span>
-                    </span>
-                  </Link>
-                </li>
-              ))}
-            </ul>
-
-            <div className="mt-5">
-              <ButtonLink href={result.href} size="sm" trailingIcon={<ArrowRight size={13} weight="bold" />}>
-                See all {result.total} in the marketplace
-              </ButtonLink>
-            </div>
-          </>
-        ) : (
-          <p className="mt-3 text-[13.5px] leading-relaxed text-muted">
-            Nothing in stock matches that reading closely. Open the marketplace and lift one constraint — the weave is
-            usually the one to drop first.{" "}
-            <Link href="/marketplace" className="text-brand-ink underline underline-offset-2">
-              Browse everything
-            </Link>
-            .
-          </p>
-        )}
+      {/* ── back into the matches ─────────────────────────────────────── */}
+      {/* The carousel owns the matches now. This is the way back to it after
+          the modal is dismissed, so closing the result is cheap rather than
+          destructive — the scan is still here, one click from its fabrics. */}
+      <div className="mt-8 flex flex-wrap items-center gap-3 border-t border-line pt-6">
+        <Button type="button" onClick={onOpenMatches} trailingIcon={<ArrowRight size={13} weight="bold" />}>
+          {result.quality === "none"
+            ? "See what's close"
+            : `View ${result.matches.length} ${pluralise(result.matches.length, "match", "matches")}`}
+        </Button>
+        <ButtonLink href={result.href} variant="ghost" size="sm">
+          Open in the marketplace
+        </ButtonLink>
       </div>
     </motion.div>
   );
-}
-
-/** `["weight", "colour"]` → `"weight and colour"`. */
-function formatList(items: string[]): string {
-  if (items.length <= 1) return items[0] ?? "";
-  return `${items.slice(0, -1).join(", ")} and ${items[items.length - 1]}`;
 }
 
 /* ── idle + loading ──────────────────────────────────────────────────────── */
