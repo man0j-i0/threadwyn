@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { createPortal } from "react-dom";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { ArrowRight, CaretLeft, CaretRight, Check, Plus } from "@phosphor-icons/react";
@@ -146,7 +147,21 @@ export function ScanResultModal({
     if (open) panelRef.current?.focus();
   }, [open]);
 
-  return (
+  // Portalled to `<body>`.
+  //
+  // Not for z-index — for `backdrop-filter`. The blur samples whatever its
+  // *backdrop root* contains, and any ancestor with a transform, a filter, an
+  // opacity below 1 or a `will-change` for those becomes that root. Rendered in
+  // place, the modal sat under the page shell and a whole chain of Framer
+  // components, and the blur died the moment one of them settled with a
+  // leftover `will-change` — which is exactly the second or two it survived.
+  // At the top of `<body>` there is no such chain left to break it.
+  // No mounted-state dance: with `open` false there is nothing to render on
+  // either side, so server and client agree and hydration has nothing to
+  // mismatch on. All hooks have already run above this point.
+  if (typeof document === "undefined") return null;
+
+  return createPortal(
     <AnimatePresence>
       {open && result ? (
         <div className="fixed inset-0 z-80">
@@ -170,13 +185,20 @@ export function ScanResultModal({
             className="absolute inset-0 cursor-default bg-[#191713]/60"
           />
 
-          <div className="absolute inset-0 flex items-start justify-center overflow-y-auto p-3 sm:p-6">
-            {/* `items-start`: the panels are different heights and stretching
-                the deck to match the detail left a dead half-panel below it. */}
+          <div className="absolute inset-0 flex items-center justify-center overflow-y-auto p-3 sm:p-6">
+            {/* One height for both panels, and an equal split of the width.
+                Sizing each to its own content made the deck a stump beside a
+                tall detail; a shared height plus internal scrolling reads as
+                one object that opened, rather than two that happen to be
+                adjacent. */}
             <motion.div
               layout
               transition={SPRING}
-              className="my-auto flex w-full max-w-[1240px] items-start gap-4"
+              className={cn(
+                "flex w-full items-stretch gap-4",
+                "h-[min(86dvh,760px)]",
+                selected ? "max-w-[1240px]" : "max-w-[720px]",
+              )}
             >
               {/* ── the deck ─────────────────────────────────────────────── */}
               <motion.div
@@ -192,12 +214,15 @@ export function ScanResultModal({
                 transition={SPRING}
                 className={cn(
                   "flex min-w-0 flex-col overflow-hidden rounded-[var(--radius-xl)] border border-line bg-surface outline-none",
-                  "shadow-[var(--shadow-xl)]",
-                  // Yields room to the detail rather than the two overlapping.
-                  selected ? "hidden flex-[0_0_54%] lg:flex" : "flex-1",
+                  "shadow-[var(--shadow-xl)] flex-1 basis-0",
+                  // Below `lg` there is no room for two; the detail takes over.
+                  selected && "hidden lg:flex",
                 )}
               >
-                <Summary result={result} onClose={onClose} />
+                {/* Only one close control at a time. With the detail open, its
+                    cross is the one that means something — two identical
+                    buttons side by side is a coin toss about what closes. */}
+                <Summary result={result} onClose={onClose} showClose={!selected} />
                 <Deck
                   matches={result.matches}
                   quality={result.quality}
@@ -220,8 +245,8 @@ export function ScanResultModal({
                     exit={{ opacity: 0, x: 40, scale: 0.96, transition: { duration: 0.2 } }}
                     transition={SPRING}
                     className={cn(
-                      "flex min-w-0 flex-1 flex-col overflow-hidden rounded-[var(--radius-xl)]",
-                      "border border-line bg-surface shadow-[var(--shadow-xl)] lg:flex-[0_0_44%]",
+                      "flex min-w-0 flex-1 basis-0 flex-col overflow-hidden rounded-[var(--radius-xl)]",
+                      "border border-line bg-surface shadow-[var(--shadow-xl)]",
                     )}
                   >
                     <Detail key={selected.id} match={selected} onClose={() => setSelected(null)} />
@@ -232,13 +257,22 @@ export function ScanResultModal({
           </div>
         </div>
       ) : null}
-    </AnimatePresence>
+    </AnimatePresence>,
+    document.body,
   );
 }
 
 /* ── what we read ────────────────────────────────────────────────────────── */
 
-function Summary({ result, onClose }: { result: ScanResultView; onClose: () => void }) {
+function Summary({
+  result,
+  onClose,
+  showClose,
+}: {
+  result: ScanResultView;
+  onClose: () => void;
+  showClose: boolean;
+}) {
   const colour = result.readings.find((r) => r.key === "colour");
   const rest = result.readings.filter((r) => r.key !== "colour").slice(0, 3);
   const weave = rest.find((r) => r.key === "weave");
@@ -260,14 +294,16 @@ function Summary({ result, onClose }: { result: ScanResultView; onClose: () => v
           </div>
         </div>
 
-        <button
-          type="button"
-          onClick={onClose}
-          aria-label="Close"
-          className="grid size-9 shrink-0 place-items-center rounded-full border border-line text-muted transition-colors hover:border-line-strong hover:text-ink"
-        >
-          <Plus size={16} weight="bold" className="rotate-45" />
-        </button>
+        {showClose ? (
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close"
+            className="grid size-9 shrink-0 place-items-center rounded-full border border-line text-muted transition-colors hover:border-line-strong hover:text-ink"
+          >
+            <Plus size={16} weight="bold" className="rotate-45" />
+          </button>
+        ) : null}
       </div>
 
       <dl className="mt-4 flex flex-wrap items-center gap-x-6 gap-y-2">
@@ -415,8 +451,10 @@ function Deck({
         </div>
       </div>
 
-      {/* The stage. Arrows sit outside the deck so they never cover a card. */}
-      <div className="relative mt-7 flex items-center justify-center gap-3 sm:gap-5">
+      {/* The stage takes the slack, so the deck sits centred in whatever height
+          is left rather than pinning itself under the heading. Arrows sit
+          outside it so they never cover a card. */}
+      <div className="relative my-auto flex items-center justify-center gap-3 py-6 sm:gap-5">
         <DeckButton direction="left" disabled={count < 2} onClick={() => step(-1)} />
 
         <div
