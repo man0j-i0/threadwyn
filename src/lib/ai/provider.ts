@@ -206,6 +206,32 @@ function visionCandidates(): string[] {
   return ["google/gemma-3-27b-it", "Qwen/Qwen2.5-VL-72B-Instruct"];
 }
 
+/**
+ * One retry, and only for a connection that never opened.
+ *
+ * This is not defensive padding — it is the failure actually observed. A scan
+ * fell back to colour-only with `UND_ERR_CONNECT_TIMEOUT`: undici gave up
+ * establishing the TCP connection after its own 10s default, below our 15s
+ * budget, so the request never reached the router. Retried by hand a second
+ * later it answered in two seconds.
+ *
+ * Deliberately narrow. An HTTP response of any status means the service was
+ * reached and has already decided — retrying a 402 or a 429 just spends the
+ * budget twice. Only a transport-level failure gets a second attempt, and only
+ * one, on a shortened clock so a genuinely dead network still degrades quickly.
+ */
+async function fetchWithOneRetry(url: string, init: RequestInit, timeoutMs: number) {
+  try {
+    return await fetch(url, { ...init, signal: AbortSignal.timeout(timeoutMs) });
+  } catch (err) {
+    const transport = err instanceof TypeError || (err as { name?: string })?.name === "TimeoutError";
+    if (!transport) throw err;
+
+    console.warn("[ai] vision transport failure, retrying once", (err as Error)?.message);
+    return fetch(url, { ...init, signal: AbortSignal.timeout(Math.min(timeoutMs, 8_000)) });
+  }
+}
+
 let resolvedVisionModel: string | null = null;
 
 export function visionAvailable(): boolean {
@@ -255,7 +281,7 @@ export async function completeVision(opts: {
 
   for (const model of attempts) {
     try {
-      const res = await fetch(url, {
+      const res = await fetchWithOneRetry(url, {
         method: "POST",
         headers,
         body: JSON.stringify({
@@ -272,8 +298,7 @@ export async function completeVision(opts: {
           temperature: 0,
           max_tokens: maxTokens,
         }),
-        signal: AbortSignal.timeout(timeoutMs),
-      });
+      }, timeoutMs);
 
       if (!res.ok) {
         const body = await res.text().catch(() => "");
