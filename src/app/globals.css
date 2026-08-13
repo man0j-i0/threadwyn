@@ -539,6 +539,35 @@ input[type="search"]::-webkit-search-decoration {
 }
 
 /* ============================================================================
+   FULL-SCREEN OVERLAYS — blur the page, not the backdrop
+   ========================================================================= */
+
+/* `backdrop-filter` was the obvious way to do this and it could not be made to
+   hold. The blur samples an element's *backdrop root*, and any ancestor with a
+   transform, a filter, an opacity below 1, or a `will-change` for any of those
+   becomes that root — at which point there is nothing behind the scrim to
+   sample and the blur silently stops. Animation libraries leave exactly those
+   properties behind, so the blur would appear, survive a second or so, and
+   vanish the moment a transition settled. Three attempts at containing that
+   failed, each for a different reason.
+
+   So the page is blurred directly instead. `filter` on real content is not
+   conditional on anything, cannot be undone by a descendant, and behaves the
+   same in every browser. The overlay itself is portalled to `<body>`, and
+   anything else that must stay sharp above the blur — notifications — marks
+   itself `data-overlay-layer`. */
+body[data-overlay-open] > *:not([data-overlay-layer]) {
+  filter: blur(10px);
+  transition: filter 0.4s var(--ease-out-expo);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body[data-overlay-open] > *:not([data-overlay-layer]) {
+    transition: none;
+  }
+}
+
+/* ============================================================================
    PRINT — order confirmations get printed. Make them survive it.
    ========================================================================= */
 

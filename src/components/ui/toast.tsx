@@ -68,6 +68,9 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
         role="region"
         aria-live="polite"
         aria-label="Notifications"
+        // Marks this as an overlay rather than page content, so a full-screen
+        // layer that blurs the page behind it leaves notifications legible.
+        data-overlay-layer
         className="pointer-events-none fixed inset-x-0 bottom-0 z-90 flex flex-col items-center gap-2 p-4 sm:items-end sm:p-6"
       >
         <AnimatePresence initial={false}>

@@ -151,11 +151,15 @@ export function ScanResultModal({
     document.body.style.overflow = "hidden";
     root.style.overscrollBehaviorX = "none";
     document.body.style.overscrollBehaviorX = "none";
+    // Blurs the page itself. See the overlay rule in globals.css for why this
+    // is not `backdrop-filter` on the scrim.
+    document.body.dataset.overlayOpen = "true";
 
     return () => {
       document.body.style.overflow = previous.bodyOverflow;
       root.style.overscrollBehaviorX = previous.rootOverscroll;
       document.body.style.overscrollBehaviorX = previous.bodyOverscroll;
+      delete document.body.dataset.overlayOpen;
     };
   }, [open]);
 
@@ -180,16 +184,10 @@ export function ScanResultModal({
   return createPortal(
     <AnimatePresence>
       {open && result ? (
-        <div className="fixed inset-0 z-80">
-          {/* Two layers, and they cannot be one.
-              `backdrop-filter` samples whatever is painted behind the element —
-              but an element that is animating its own `opacity` becomes its own
-              backdrop root, with nothing behind it, so the blur silently does
-              nothing. Framer also leaves `will-change: opacity` behind, which
-              has the same effect after the animation settles. So the blur lives
-              on a plain element that never animates, and only the tint fades. */}
-          <div aria-hidden className="absolute inset-0 backdrop-blur-md" />
-
+        <div className="fixed inset-0 z-80" data-overlay-layer>
+          {/* No `backdrop-filter` here. The page itself is blurred, driven by
+              `data-overlay-open` on `<body>` — see the overlay rule in
+              globals.css for the three ways the backdrop approach failed. */}
           <motion.button
             type="button"
             aria-label="Close scan result"
@@ -212,14 +210,12 @@ export function ScanResultModal({
                 Width is a pure CSS transition on `flex-basis` for the same
                 reason: no layout projection, nothing promoted, nothing to
                 clean up. */}
-            <div
-              className={cn(
-                "flex w-full items-stretch gap-4",
-                "h-[min(88dvh,820px)]",
-                "transition-[max-width] duration-500 ease-[var(--ease-out-expo)]",
-                selected ? "max-w-[1480px]" : "max-w-[760px]",
-              )}
-            >
+            {/* The deck's width never changes. Its cards are absolutely
+                positioned against the stage, so a stage that resizes mid-
+                animation re-lays them out on every frame — which is the lurch
+                you saw when the detail closed. Only the detail's width
+                animates; the row is centred, so the deck simply slides aside. */}
+            <div className="flex h-[min(88dvh,820px)] items-stretch gap-4">
               {/* ── the deck ─────────────────────────────────────────────── */}
               <motion.div
                 ref={panelRef}
@@ -232,11 +228,10 @@ export function ScanResultModal({
                 exit={{ opacity: 0, y: 16, scale: 0.99, transition: { duration: 0.18 } }}
                 transition={SPRING}
                 className={cn(
-                  "flex min-w-0 flex-col overflow-hidden rounded-[var(--radius-xl)] border border-line bg-surface outline-none",
-                  "shadow-[var(--shadow-xl)]",
-                  "transition-[flex-basis] duration-500 ease-[var(--ease-out-expo)]",
+                  "flex w-[min(94vw,660px)] shrink-0 flex-col overflow-hidden rounded-[var(--radius-xl)]",
+                  "border border-line bg-surface shadow-[var(--shadow-xl)] outline-none",
                   // Below `lg` there is no room for two; the detail takes over.
-                  selected ? "hidden basis-[44%] lg:flex" : "basis-full",
+                  selected && "hidden lg:flex",
                 )}
               >
                 {/* Only one close control at a time. With the detail open, its
@@ -258,16 +253,21 @@ export function ScanResultModal({
               <div
                 aria-hidden={!selected}
                 className={cn(
-                  "flex min-w-0 flex-col overflow-hidden rounded-[var(--radius-xl)] bg-surface",
-                  "transition-[flex-basis,opacity,transform] duration-500 ease-[var(--ease-out-expo)]",
+                  "overflow-hidden rounded-[var(--radius-xl)] bg-surface",
+                  "transition-[width,opacity] duration-500 ease-[var(--ease-out-expo)]",
                   selected
-                    ? "basis-[56%] border border-line opacity-100 shadow-[var(--shadow-xl)]"
-                    : "pointer-events-none basis-0 translate-x-6 border-0 opacity-0",
+                    ? "w-[min(94vw,560px)] border border-line opacity-100 shadow-[var(--shadow-xl)]"
+                    : "pointer-events-none w-0 border-0 opacity-0",
                 )}
               >
-                {/* `shown` rather than `selected`, so the panel keeps its
-                    contents while it collapses instead of emptying first. */}
-                {shown ? <Detail key={shown.id} match={shown} onClose={() => setSelected(null)} /> : null}
+                {/* Fixed width on the inner wrapper, so the contents do not
+                    reflow line by line while the panel is opening — the
+                    container clips instead. */}
+                <div className="flex h-full w-[min(94vw,560px)] flex-col">
+                  {/* `shown` rather than `selected`, so the panel keeps its
+                      contents while it collapses instead of emptying first. */}
+                  {shown ? <Detail key={shown.id} match={shown} onClose={() => setSelected(null)} /> : null}
+                </div>
               </div>
             </div>
           </div>
