@@ -19,20 +19,27 @@ What a camera can genuinely resolve:
 
 | Reading | Source | Certainty | Filters? |
 |---|---|---|---|
-| Colour | measured pixels | by measurement | **yes** |
+| Colour | measured pixels | from the match distance | **yes** |
 | Weave | vision model | likely | **yes** |
-| Weight | vision model | likely | **yes** |
-| Likely fibre | vision model | uncertain, always | no |
 | Surface | vision model | likely | no |
+| Weight | vision model | uncertain, always | no |
 
 Withheld on purpose, and said so on screen:
 
 > GSM, composition and width are physical measurements — they come from the
-> mill, not the photograph. Price, lead time and certification are supplier data.
+> mill, not the photograph. Fibre is not guessed here: cotton, viscose and spun
+> polyester are near identical in a photo. Price, lead time and certification
+> are supplier data.
 
-**Fibre is pinned to `uncertain` in code, not by the model's own judgement.**
-Cotton, viscose and spun polyester are close to indistinguishable in a
-photograph; the difference is a burn test or a lab, not a camera.
+**Fibre is not asked at all.** An earlier version asked and labelled the answer
+"uncertain", but a fibre question is inherently multi-option, and multi-option
+questions are exactly what this model fails at (§3). It would have returned
+"cotton" for everything. Not asking is more honest than asking and hedging.
+
+**Weight is pinned to `uncertain` in code.** The question that produces it —
+*open or dense?* — is a fair thing to ask a photograph, but it is a proxy for
+weight rather than a reading of it, and both test swatches came back "dense".
+Not enough evidence to let it narrow the catalogue.
 
 ### Why there are no confidence percentages
 
@@ -54,7 +61,7 @@ an actual distance — see below.
         │
         ├── pixels ──► dominant colour ──► nearest colourway in stock   ALWAYS
         │
-        └── model ───► weave, weight, fibre, surface                    WHEN UP
+        └── model ───► weave, surface, weight                           WHEN UP
                                     │
                                     ▼
                           ProductFilters
@@ -97,20 +104,86 @@ uncertain — and an uncertain colour is shown but not filtered on.
 
 ---
 
-## 3. The rule worth defending
+## 3. The model will not classify, so it doesn't have to
+
+This is the part worth telling. The first version of the prompt asked for one
+JSON object with a ten-option weave enum:
+
+```
+{"weave":"plain|twill|satin|jacquard|...|unknown", "weight":..., "fibre":..., "surface":...}
+```
+
+Tested against two generated swatches — an ecru plain weave and an indigo 2/1
+twill with an obvious diagonal — it returned `"weave":"plain"` for **both**.
+
+The control run is what settled it: **the same prompt with no image attached at
+all** returned the same JSON. The leading option in the enum was outscoring the
+photograph.
+
+The model is not the problem. Asked plainly, it reads those images correctly:
+
+| Question asked | plain swatch | twill swatch |
+|---|---|---|
+| "What colour is this?" | Beige ✅ | Navy blue ✅ |
+| "Describe the interlacing" | grid ✅ | diagonal ✅ |
+| "grid or diagonal?" — 3 runs each | grid ×3 ✅ | diagonal ×3 ✅ |
+| **the ten-option JSON enum** | plain ✅ | **plain** ❌ |
+
+Four prompt shapes were tried before landing: reordering the enum so `plain` was
+last, adding a `structure` field to force an observation first, prose-then-JSON,
+and splitting into two parallel calls. **Every one of them still said "plain"
+for the twill.** Only low-cardinality questions worked.
+
+So the prompt asks three binaries and nothing else:
+
+```
+grid or diagonal
+matte or glossy
+open or dense
+```
+
+and `composeWeave()` turns the answers into a catalogue weave in ordinary,
+unit-tested code:
+
+```
+diagonal        → TWILL
+grid + glossy   → SATIN
+grid + matte    → PLAIN
+anything else   → null, and no weave filter at all
+```
+
+4/4 on the swatches that the JSON version got 50% on, in ~2s.
+
+A fourth question — *knitted or woven* — was tried and cut. It called the twill
+swatch "knitted" on the same request where the interlacing line correctly said
+"diagonal", and because construction was checked first it overrode the good
+answer. One unreliable input outranking a reliable one is worse than not asking.
+
+Jacquard, dobby, herringbone, rib, canvas and crepe are simply not claimed. They
+resolve to `null`, which means no weave filter — the honest outcome, and one the
+relaxation ladder already handles.
+
+**The generalisable point:** the model reports what it sees; deciding what that
+makes the fabric is not its job. That is also what makes the decision testable —
+`composeWeave` and `parseBinaryReading` are pure functions with unit tests, and
+none of that would be possible if the classification lived inside the prompt.
+
+---
+
+## 4. The rule worth defending
 
 > **An uncertain reading is displayed but never filtered on.**
 
 One line in `scanFabric`, and it is the difference between "here is what I think
 I see" and "I have hidden everything that disagrees with what I think I see". It
-is what stops a shaky fibre guess from emptying the grid.
+is what stops a soft visual impression from emptying the grid.
 
 It is also invisible when it works, which is why it has its own tests in
 [`fabric-scan.test.ts`](../src/lib/ai/fabric-scan.test.ts).
 
 ---
 
-## 4. Matching degrades too
+## 5. Matching degrades too
 
 The first real photo tested read correctly — ecru, plain weave, midweight — and
 matched **zero** fabrics. Three ANDed constraints against a 60-item catalogue
@@ -140,7 +213,7 @@ rest, and the page states what was set aside.
 
 ---
 
-## 5. Where it sits
+## 6. Where it sits
 
 ```
 POST /api/v1/ai/fabric-scan      rate limited 10/min — tighter than the text
@@ -168,7 +241,7 @@ renders the text query in its search box. There is no search box on `/scan`, so
 
 ---
 
-## 6. The model
+## 7. The model
 
 `Qwen2.5-7B-Instruct` — the chat tier — is text-only. Vision is a different
 *model*, not a different provider: same HF router, same token, same
@@ -178,14 +251,26 @@ Probed against a synthetic plain-weave swatch before any UI was written:
 
 | Model | Latency | Read |
 |---|---|---|
-| **`google/gemma-3-27b-it`** | **1.9s** | `plain` / `pale beige` / `cotton` / `light` ✅ |
+| **`google/gemma-3-27b-it`** | **1.9s** | `plain` / `pale beige` / `cotton` / `light` |
 | `Qwen/Qwen2.5-VL-72B-Instruct` | 2.2s | called it `twill` ✗ |
 | `zai-org/GLM-4.5V` | 4.3s | empty content ✗ |
 | `Qwen2.5-VL-7B`, `Llama-3.2-11B-Vision` | — | not served on this token |
 
+Worth recording that **this probe was more flattering than it deserved**. It ran
+the ten-option JSON prompt, so gemma's `"plain"` was the enum's leading option,
+not a reading of the cloth — right answer, wrong reason, and it took the twill
+swatch in §3 to expose that. The colour it returned was genuine. Model selection
+happened to land correctly; the reasoning behind it did not survive scrutiny.
+
 Gemma is first in `visionCandidates()`, Qwen-VL-72B behind it as a second
 opinion. Both resolve as bare ids — unlike the chat tier, neither needed a
 provider pin. Override with `HF_VISION_MODEL`.
+
+**The second opinion is currently unavailable.** Qwen-VL-72B began returning
+`402` partway through this work — its serving provider bills separately, and
+that budget is spent while gemma's is not. It stays in the list because the
+cost of a dead candidate is one wasted request per process, and only when gemma
+has already failed.
 
 The empty-content case is handled explicitly: a model that answers with nothing
 is treated as a miss so the next candidate gets a turn.
@@ -196,7 +281,7 @@ worth waiting for and the measured colour is already in hand.
 
 ---
 
-## 7. Not built
+## 8. Not built
 
 - **Camera capture.** Upload only. `capture="environment"` on the input is a
   one-line addition if a phone demo needs it.

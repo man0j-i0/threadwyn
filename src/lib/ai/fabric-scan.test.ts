@@ -3,35 +3,34 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Swatch } from "@/lib/colour";
 
 /**
- * The rule these exist to protect: **an uncertain reading is displayed but
- * never filtered on.**
+ * Two rules these exist to protect.
  *
- * It is what stops one shaky fibre guess from emptying the results grid, and
- * it is the difference between "here is what I think I see" and "I have hidden
- * everything that disagrees with what I think I see". It is also invisible in
- * the UI when it works, which is exactly the kind of rule that rots silently.
+ * **An uncertain reading is displayed but never filtered on.** It is what stops
+ * a soft visual impression from emptying the results grid, and it is invisible
+ * in the UI when it works — exactly the kind of rule that rots silently.
  *
- * The vision tier is mocked because these are about the mapping, not the model.
- * Whether gemma reads a swatch correctly is a question for `ai:check`, not a
- * unit test — it would make the suite depend on a network and a GPU.
+ * **The model reports; this code classifies.** The first version asked the
+ * model to fill a ten-option weave enum and got `"plain"` for everything,
+ * including a swatch with an obvious diagonal and including a control run with
+ * no image attached. The prompt now asks binaries and `composeWeave` decides.
+ * Keeping that decision in ordinary code is what makes it testable at all.
+ *
+ * The vision tier is mocked: these are about the mapping, not the model.
+ * Whether gemma reads a real swatch correctly is a question for a live probe,
+ * not a unit test — that would make the suite depend on a network and a GPU.
  */
 
 const completeVision = vi.fn();
 const visionAvailable = vi.fn(() => true);
 
-vi.mock("@/lib/ai/provider", async () => {
-  // parseJsonLoose is real: how tolerantly we parse a model's output is part of
-  // what is under test, and reimplementing it here would test the copy.
-  const actual = await vi.importActual<typeof import("@/lib/ai/provider")>("@/lib/ai/provider");
-  return {
-    parseJsonLoose: actual.parseJsonLoose,
-    completeVision: (...args: unknown[]) => completeVision(...args),
-    visionAvailable: () => visionAvailable(),
-    visionLabel: () => "google/gemma-3-27b-it",
-  };
-});
+vi.mock("@/lib/ai/provider", () => ({
+  completeVision: (...args: unknown[]) => completeVision(...args),
+  visionAvailable: () => visionAvailable(),
+  visionLabel: () => "google/gemma-3-27b-it",
+}));
 
-const { scanFabric, relaxationLadder, chipsFor } = await import("./fabric-scan");
+const { scanFabric, relaxationLadder, chipsFor, parseBinaryReading, composeWeave } =
+  await import("./fabric-scan");
 
 const PALETTE: Swatch[] = [
   { name: "Optic White", hex: "#F7F5F0" },
@@ -43,8 +42,9 @@ const PALETTE: Swatch[] = [
 /** Exactly Ecru, so the colour reading is confident and does produce a filter. */
 const ECRU = { r: 231, g: 222, b: 204 };
 
-function answers(json: unknown) {
-  completeVision.mockResolvedValue({ content: JSON.stringify(json), model: "google/gemma-3-27b-it" });
+/** The model's three lines: interlacing, sheen, density. */
+function answers(...lines: string[]) {
+  completeVision.mockResolvedValue({ content: lines.join("\n"), model: "google/gemma-3-27b-it" });
 }
 
 function scan(measured = ECRU) {
@@ -60,18 +60,82 @@ beforeEach(() => {
   visionAvailable.mockReturnValue(true);
 });
 
+describe("parseBinaryReading", () => {
+  it("reads three clean lines", () => {
+    expect(parseBinaryReading("grid\nmatte\ndense")).toEqual({
+      interlacing: "grid",
+      sheen: "matte",
+      density: "dense",
+    });
+  });
+
+  it("tolerates casing, numbering, punctuation and blank lines", () => {
+    expect(parseBinaryReading("1. Diagonal\n\n2) GLOSSY.\n3 - open")).toEqual({
+      interlacing: "diagonal",
+      sheen: "glossy",
+      density: "open",
+    });
+  });
+
+  it("nulls a line that is not one of the two offered words", () => {
+    // A model that answered something else has not answered. Coercing it would
+    // be inventing a reading.
+    expect(parseBinaryReading("herringbone\nmatte\ndense").interlacing).toBeNull();
+    expect(parseBinaryReading("grid\nunsure\ndense").sheen).toBeNull();
+  });
+
+  it("nulls missing lines rather than shifting the others up", () => {
+    expect(parseBinaryReading("grid")).toEqual({ interlacing: "grid", sheen: null, density: null });
+  });
+
+  it("returns all nulls for prose", () => {
+    expect(parseBinaryReading("I'm sorry, I can't tell from this image.")).toEqual({
+      interlacing: null,
+      sheen: null,
+      density: null,
+    });
+  });
+});
+
+describe("composeWeave", () => {
+  const base = { interlacing: null, sheen: null, density: null } as const;
+
+  it("reads a diagonal as twill regardless of sheen", () => {
+    expect(composeWeave({ ...base, interlacing: "diagonal" })).toBe("TWILL");
+    expect(composeWeave({ ...base, interlacing: "diagonal", sheen: "glossy" })).toBe("TWILL");
+  });
+
+  it("separates plain from satin on sheen", () => {
+    expect(composeWeave({ ...base, interlacing: "grid", sheen: "matte" })).toBe("PLAIN");
+    expect(composeWeave({ ...base, interlacing: "grid", sheen: "glossy" })).toBe("SATIN");
+  });
+
+  it("defaults a grid with no sheen answer to plain", () => {
+    expect(composeWeave({ ...base, interlacing: "grid" })).toBe("PLAIN");
+  });
+
+  it("returns null when the interlacing question went unanswered", () => {
+    // No weave filter at all, which the relaxation ladder copes with. Guessing
+    // among ten weaves is the failure this design replaced.
+    expect(composeWeave(base)).toBeNull();
+    expect(composeWeave({ ...base, sheen: "glossy", density: "dense" })).toBeNull();
+  });
+});
+
 describe("the uncertain-never-filters rule", () => {
-  it("shows a likely fibre but does not filter on it", async () => {
-    answers({ weave: "plain", weight: "light", fibre: "cotton", surface: "smooth matte" });
+  it("shows weight but does not let it narrow the catalogue", async () => {
+    // "Open or dense" is a fair question to ask a photograph, but it is a proxy
+    // for weight rather than a reading of it.
+    answers("grid", "matte", "dense");
     const result = await scan();
 
-    expect(reading(result, "fibre")).toMatchObject({ value: "Cotton", certainty: "uncertain" });
-    expect(result.filters.fibre).toBeUndefined();
-    expect(result.href).not.toContain("fibre=");
+    expect(reading(result, "weight")).toMatchObject({ certainty: "uncertain" });
+    expect(result.filters.gsmMin).toBeUndefined();
+    expect(result.filters.gsmMax).toBeUndefined();
   });
 
   it("does not filter on a colour that matched nothing close", async () => {
-    answers({ weave: "twill" });
+    answers("diagonal", "matte", "dense");
     // Hot magenta against a neutral palette: nearest swatch is far away.
     const result = await scan({ r: 255, g: 0, b: 200 });
 
@@ -82,61 +146,49 @@ describe("the uncertain-never-filters rule", () => {
   });
 
   it("keeps the uncertain reading visible rather than dropping it", async () => {
-    answers({ fibre: "viscose" });
+    answers("grid", "matte", "open");
     const result = await scan();
 
-    expect(reading(result, "fibre")).toBeDefined();
-    expect(reading(result, "fibre")?.note).toMatch(/not used to filter/i);
+    expect(reading(result, "weight")).toBeDefined();
+    expect(reading(result, "weight")?.note).toMatch(/not used to filter/i);
   });
 });
 
 describe("readings become ordinary filters", () => {
   it("maps a confident colour to the text query", async () => {
-    answers({});
+    answers("grid", "matte", "dense");
     const result = await scan();
 
     expect(reading(result, "colour")).toMatchObject({ value: "Ecru", certainty: "confident", source: "pixels" });
     expect(result.filters.q).toBe("Ecru");
   });
 
-  it("maps weave to the enum the marketplace uses", async () => {
-    answers({ weave: "herringbone" });
+  it("maps a diagonal to the weave the marketplace uses", async () => {
+    answers("diagonal", "matte", "dense");
     const result = await scan();
 
-    expect(reading(result, "weave")?.value).toBe("Herringbone weave");
-    expect(result.filters.weave).toEqual(["HERRINGBONE"]);
+    expect(reading(result, "weave")?.value).toBe("Twill weave");
+    expect(result.filters.weave).toEqual(["TWILL"]);
   });
 
-  it('tolerates the model answering "plain weave" instead of "plain"', async () => {
-    answers({ weave: "plain weave" });
-    expect((await scan()).filters.weave).toEqual(["PLAIN"]);
-  });
-
-  it.each([
-    ["light", { gsmMax: 160, gsmMin: undefined }],
-    ["heavy", { gsmMin: 260, gsmMax: undefined }],
-    ["medium", { gsmMin: 150, gsmMax: 280 }],
-  ])("maps %s weight to a gsm band", async (weight, expected) => {
-    answers({ weight });
-    const result = await scan();
-
-    expect(result.filters.gsmMin).toBe(expected.gsmMin);
-    expect(result.filters.gsmMax).toBe(expected.gsmMax);
+  it("maps a glossy grid to satin", async () => {
+    answers("grid", "glossy", "dense");
+    expect((await scan()).filters.weave).toEqual(["SATIN"]);
   });
 
   it("builds a marketplace href from exactly those filters", async () => {
-    answers({ weave: "plain", weight: "light" });
+    answers("diagonal", "matte", "open");
     const result = await scan();
 
-    expect(result.href).toMatch(/^\/marketplace\?/);
     const params = new URLSearchParams(result.href.split("?")[1]);
-    expect(params.get("weave")).toBe("PLAIN");
-    expect(params.get("gsmMax")).toBe("160");
+    expect(params.get("weave")).toBe("TWILL");
     expect(params.get("q")).toBe("Ecru");
+    // Weight is uncertain, so it must not reach the URL.
+    expect(params.get("gsmMax")).toBeNull();
   });
 
   it("carries the chips the marketplace would render", async () => {
-    answers({ weave: "satin" });
+    answers("grid", "glossy", "dense");
     const result = await scan();
 
     expect(result.chips.map((c) => c.label)).toContain("Weave: Satin");
@@ -146,49 +198,41 @@ describe("readings become ordinary filters", () => {
     // `describeFilters` omits `q` because the marketplace renders it in the
     // search box. There is no search box here, so an invisible filter would be
     // narrowing results with nothing on screen to explain it.
-    answers({ weave: "satin" });
-    const result = await scan();
-
-    expect(result.chips[0]).toMatchObject({ key: "q", label: "Colour: Ecru" });
+    answers("grid", "matte", "dense");
+    expect((await scan()).chips[0]).toMatchObject({ key: "q", label: "Colour: Ecru" });
   });
 
   it("has no colour chip when the colour was too uncertain to filter on", async () => {
-    answers({ weave: "satin" });
-    const result = await scan({ r: 255, g: 0, b: 200 });
-
-    expect(result.chips.some((c) => c.key === "q")).toBe(false);
+    answers("grid", "matte", "dense");
+    expect((await scan({ r: 255, g: 0, b: 200 })).chips.some((c) => c.key === "q")).toBe(false);
   });
 });
 
 describe("what the model is not allowed to assert", () => {
-  it('drops fields answered "unknown"', async () => {
-    answers({ weave: "unknown", weight: "unknown", fibre: "unknown", surface: "unknown" });
-    const result = await scan();
-
-    expect(result.readings.map((r) => r.key)).toEqual(["colour"]);
-    expect(result.filters.weave).toBeUndefined();
-  });
-
-  it("ignores a weave that is not in the catalogue's enum", async () => {
-    answers({ weave: "gauze" });
+  it("claims no weave when the interlacing line was unusable", async () => {
+    answers("herringbone", "matte", "dense");
     const result = await scan();
 
     expect(reading(result, "weave")).toBeUndefined();
     expect(result.filters.weave).toBeUndefined();
   });
 
-  it("ignores a fibre outside the known list", async () => {
-    answers({ fibre: "unobtainium" });
-    expect(reading(await scan(), "fibre")).toBeUndefined();
+  it("never reports a fibre", async () => {
+    // Cotton, viscose and spun polyester are near identical in a photo, so the
+    // question is not asked at all rather than asked and hedged.
+    answers("grid", "matte", "dense");
+    const result = await scan();
+
+    expect(reading(result, "fibre")).toBeUndefined();
+    expect(result.withheld.join(" ")).toMatch(/Fibre is not guessed here/);
   });
 
   it("never infers gsm, price or composition, and says so", async () => {
-    answers({ weave: "plain", weight: "light", fibre: "cotton" });
+    answers("grid", "matte", "dense");
     const result = await scan();
 
     expect(result.withheld.join(" ")).toMatch(/GSM, composition and width/);
     expect(result.withheld.join(" ")).toMatch(/Price, lead time and certification/);
-    // The gsm filter is a band inferred from "light", never a claimed value.
     expect(result.readings.some((r) => /\d+\s*gsm/i.test(r.value))).toBe(false);
   });
 });
@@ -197,8 +241,7 @@ describe("the relaxation ladder", () => {
   const full = { q: "Ecru", weave: ["PLAIN"], gsmMin: 150, gsmMax: 280, perPage: 24, page: 1 };
 
   it("tries the full reading first", () => {
-    const ladder = relaxationLadder(full);
-    expect(ladder[0]).toEqual({ filters: full, relaxed: [] });
+    expect(relaxationLadder(full)[0]).toEqual({ filters: full, relaxed: [] });
   });
 
   it("gives up weight, then colour, then weave", () => {
@@ -217,10 +260,8 @@ describe("the relaxation ladder", () => {
 
     expect(noWeight!.filters.gsmMin).toBeUndefined();
     expect(noWeight!.filters.q).toBe("Ecru");
-
     expect(noColour!.filters.q).toBeUndefined();
     expect(noColour!.filters.weave).toEqual(["PLAIN"]);
-
     expect(noWeave!.filters.weave).toBeUndefined();
   });
 
@@ -231,8 +272,6 @@ describe("the relaxation ladder", () => {
   });
 
   it("skips rungs for readings that were never made", () => {
-    // Colour-only scan: there is no weight or weave to give up, so the ladder
-    // is the full set and then nothing at all.
     expect(relaxationLadder({ q: "Navy" }).map((r) => r.relaxed)).toEqual([[], ["colour"]]);
   });
 
@@ -240,11 +279,9 @@ describe("the relaxation ladder", () => {
     expect(relaxationLadder({})).toEqual([{ filters: {}, relaxed: [] }]);
   });
 
-  it("bottoms out at a filter set that cannot be empty-handed", () => {
+  it("bottoms out at a filter set that cannot come back empty-handed", () => {
     const ladder = relaxationLadder(full);
     const last = ladder[ladder.length - 1]!.filters;
-    // Whatever is left must not constrain the catalogue at all, or the ladder
-    // could still end on an empty grid.
     expect(last.q).toBeUndefined();
     expect(last.weave).toBeUndefined();
     expect(last.gsmMin).toBeUndefined();
@@ -254,8 +291,11 @@ describe("the relaxation ladder", () => {
 
 describe("chipsFor", () => {
   it("puts the colour first, ahead of the structural filters", () => {
-    const chips = chipsFor({ q: "Ecru", weave: ["PLAIN"], gsmMax: 160 });
-    expect(chips.map((c) => c.key)).toEqual(["q", "weave", "gsmMax"]);
+    expect(chipsFor({ q: "Ecru", weave: ["PLAIN"], gsmMax: 160 }).map((c) => c.key)).toEqual([
+      "q",
+      "weave",
+      "gsmMax",
+    ]);
   });
 
   it("omits the colour chip when there is no colour filter", () => {
@@ -275,6 +315,8 @@ describe("degrading when the model tier is gone", () => {
   });
 
   it("falls back to colour when the vision call fails", async () => {
+    // Exhausted credits, a revoked token, a 500 and a timeout all arrive here
+    // as null — the caller cannot tell them apart and does not need to.
     completeVision.mockResolvedValue(null);
     const result = await scan();
 
@@ -282,7 +324,7 @@ describe("degrading when the model tier is gone", () => {
     expect(reading(result, "colour")?.value).toBe("Ecru");
   });
 
-  it("falls back to colour when the model answers with prose instead of JSON", async () => {
+  it("falls back to colour when the model answers with prose", async () => {
     completeVision.mockResolvedValue({ content: "I'm sorry, I can't tell.", model: "x" });
     const result = await scan();
 
@@ -290,20 +332,18 @@ describe("degrading when the model tier is gone", () => {
     expect(result.readings.map((r) => r.key)).toEqual(["colour"]);
   });
 
-  it("recovers JSON the model wrapped in a code fence", async () => {
-    completeVision.mockResolvedValue({
-      content: '```json\n{"weave":"twill","weight":"heavy"}\n```',
-      model: "x",
-    });
+  it("keeps a partial answer when only some lines came back usable", async () => {
+    answers("diagonal", "banana", "dense");
     const result = await scan();
 
     expect(result.mode).toBe("vision");
     expect(result.filters.weave).toEqual(["TWILL"]);
-    expect(result.filters.gsmMin).toBe(260);
+    expect(reading(result, "surface")).toBeUndefined();
+    expect(reading(result, "weight")).toBeDefined();
   });
 
   it("reports an empty palette without crashing", async () => {
-    answers({ weave: "plain" });
+    answers("grid", "matte", "dense");
     const result = await scanFabric({
       imageDataUri: "data:image/webp;base64,AAAA",
       measured: ECRU,

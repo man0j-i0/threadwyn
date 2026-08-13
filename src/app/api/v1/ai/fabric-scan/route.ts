@@ -60,18 +60,17 @@ export async function POST(req: Request) {
     const picked: Item[] = [];
     const seen = new Set<string>();
 
-    /** First rung that returned anything — decides what we admit to relaxing. */
-    let primary: { relaxed: string[] } | null = null;
-    /** Last rung we actually took a row from — what "see all" should show. */
-    let widest: { filters: typeof scan.filters; total: number } | null = null;
+    /** How many matched every reading. Zero when the tightest rung came back empty. */
+    let exact = 0;
+    /** Last rung we actually took a row from — what "see all" and the chips show. */
+    let widest: { filters: typeof scan.filters; total: number; relaxed: string[] } | null = null;
 
-    for (const rung of ladder) {
+    for (const [index, rung] of ladder.entries()) {
       if (picked.length >= PREVIEW) break;
 
       const results = await searchProducts({ ...rung.filters, perPage: PREVIEW, page: 1 });
+      if (index === 0) exact = results.total;
       if (results.total === 0) continue;
-
-      primary ??= { relaxed: rung.relaxed };
 
       let drew = false;
       for (const item of results.items) {
@@ -80,19 +79,27 @@ export async function POST(req: Request) {
         picked.push(item);
         drew = true;
       }
-      if (drew) widest = { filters: rung.filters, total: results.total };
+      if (drew) widest = { filters: rung.filters, total: results.total, relaxed: rung.relaxed };
     }
 
-    const shown = widest ?? { filters: scan.filters, total: 0 };
+    const shown = widest ?? { filters: scan.filters, total: 0, relaxed: [] };
 
     return ok({
       ...scan,
       // The filters that actually produced these rows, not the ones the reading
-      // implied — otherwise "see all 12" would land on an empty page.
+      // implied — otherwise "see all 21" would land on a different result set
+      // than the one on screen.
       filters: shown.filters,
       chips: chipsFor(shown.filters),
       href: hrefFor(shown.filters),
-      relaxed: primary?.relaxed ?? [],
+      // Reported from the widest rung drawn from, not the first one that
+      // answered. Those differ whenever an exact hit was too thin to fill the
+      // list: taking it from the first rung would say "nothing was relaxed"
+      // while the chips and the link had quietly dropped the colour.
+      relaxed: shown.relaxed,
+      // Lets the page distinguish "no exact match, here is the nearest" from
+      // "one exact match, plus near misses to fill the list".
+      exact,
       matches: picked,
       total: shown.total,
     });

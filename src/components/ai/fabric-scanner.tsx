@@ -5,7 +5,7 @@ import { useCallback, useRef, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { ArrowRight, ArrowsClockwise, Eyedropper, ImageSquare, UploadSimple } from "@phosphor-icons/react";
 
-import { cn, formatMetres, formatPerMetre } from "@/lib/utils";
+import { cn, formatMetres, formatPerMetre, pluralise } from "@/lib/utils";
 import { Button, ButtonLink } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
 
@@ -42,8 +42,10 @@ type ScanResult = {
   measuredHex: string;
   matchedHex: string | null;
   withheld: string[];
-  /** Readings that had to be given up to return any match at all. */
+  /** Readings given up to fill the list. */
   relaxed: string[];
+  /** How many fabrics matched every reading. */
+  exact: number;
   matches: Match[];
   total: number;
 };
@@ -295,8 +297,19 @@ function Reading({ result }: { result: ScanResult }) {
 
         {result.relaxed.length ? (
           <p className="mt-3 rounded-[var(--radius-md)] border border-line bg-sunken px-3.5 py-2.5 text-[12.5px] leading-relaxed text-muted">
-            Nothing in stock matched every reading, so {formatList(result.relaxed)}{" "}
-            {result.relaxed.length > 1 ? "were" : "was"} set aside. These are the closest on what&apos;s left.
+            {result.exact > 0 ? (
+              <>
+                Only {result.exact} {pluralise(result.exact, "fabric")} matched every reading
+                {result.exact === 1 ? " — it's first below" : ""}. The rest are the closest with{" "}
+                {formatList(result.relaxed)} set aside.
+              </>
+            ) : (
+              <>
+                Nothing in stock matched every reading, so {formatList(result.relaxed)}{" "}
+                {result.relaxed.length > 1 ? "were" : "was"} set aside. These are the closest on what&apos;s
+                left.
+              </>
+            )}
           </p>
         ) : null}
 

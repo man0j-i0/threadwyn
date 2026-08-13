@@ -1,8 +1,6 @@
 import "server-only";
 
-import { z } from "zod";
-
-import { completeVision, parseJsonLoose, visionAvailable, visionLabel } from "@/lib/ai/provider";
+import { completeVision, visionAvailable, visionLabel } from "@/lib/ai/provider";
 import { describeFilters } from "@/lib/ai/nl-filters";
 import { filtersToParams } from "@/lib/marketplace-params";
 import { colourCertainty, nearestSwatch, rgbToHex, type Rgb, type Swatch } from "@/lib/colour";
@@ -60,74 +58,99 @@ export type FabricScan = {
 };
 
 /**
- * Colour is absent from this prompt on purpose — it is measured, not asked.
+ * Three binary questions. Not a JSON schema, and not by preference.
  *
- * Everything requested here is structure the camera can genuinely resolve.
- * "unknown" is offered explicitly for each field because a model given only
- * valid-looking options will pick one, and a confident wrong weave is worse
- * than an admitted gap.
+ * The first version of this asked the model to fill a ten-option weave enum in
+ * one JSON object. It returned `"plain"` for everything — including a swatch
+ * with an obvious diagonal wale, and including a control run **with no image
+ * attached at all**, which is what gave the game away: the enum's leading
+ * option was outscoring the photograph.
+ *
+ * The same model, asked one two-way question about the same two swatches, was
+ * right 8 times out of 8. Asked to describe them in prose, right again. It sees
+ * the cloth perfectly well; it just will not classify into a long list.
+ *
+ * So the prompt only ever asks binaries, and `composeWeave` does the
+ * classifying in ordinary code that can be unit tested. The model reports what
+ * it sees; deciding what that makes the fabric is not its job.
+ *
+ * Colour is absent for a different reason — it is measured from pixels, not
+ * asked. See `scanFabric`.
  */
-const SCAN_PROMPT = `You are looking at a close-up photograph of a textile swatch.
+const SCAN_PROMPT = `Look only at this photograph of a textile swatch. Answer each question about THIS image.
 
-Report only what is visibly present. If the photograph does not show enough to tell, answer "unknown" — do not guess.
+1. Do the yarns form a square checkerboard grid, or diagonal lines running corner to corner?
+2. Is the surface matte, or glossy with a sheen?
+3. Does the cloth look open and light, or dense and heavy?
 
-Reply with JSON only. No prose, no code fence.
+Reply with exactly three lines, one lowercase word each, no numbering:
+grid or diagonal
+matte or glossy
+open or dense`;
 
-{"weave":"plain|twill|satin|jacquard|herringbone|jersey|rib|dobby|canvas|crepe|unknown","weight":"light|medium|heavy|unknown","fibre":"cotton|linen|silk|wool|polyester|viscose|nylon|unknown","surface":"two or three words for the hand, e.g. smooth matte, crisp dry, soft brushed"}
+export type BinaryReading = {
+  interlacing: "grid" | "diagonal" | null;
+  sheen: "matte" | "glossy" | null;
+  density: "open" | "dense" | null;
+};
 
-weave    the interlacing pattern you can see between the yarns
-weight   light if open and sheer, heavy if dense and thick
-fibre    your best reading of the fibre, or "unknown"
-surface  how the cloth would feel, judged from sheen and texture`;
+/**
+ * Three lines, one word each. Anything that is not one of the two offered words
+ * becomes `null` rather than being coerced — a model that ignored the format
+ * has not answered, and a missing reading is safer than an invented one.
+ */
+export function parseBinaryReading(raw: string): BinaryReading {
+  const lines = raw
+    .toLowerCase()
+    .split(/\r?\n/)
+    .map((line) => line.replace(/[^a-z]/g, ""))
+    .filter(Boolean);
 
-const modelReading = z.object({
-  weave: z.string().optional(),
-  weight: z.string().optional(),
-  fibre: z.string().optional(),
-  surface: z.string().optional(),
-});
+  const pick = <A extends string, B extends string>(line: string | undefined, a: A, b: B) =>
+    line === a ? a : line === b ? b : null;
 
-const WEAVES = new Set([
-  "PLAIN",
-  "TWILL",
-  "SATIN",
-  "JACQUARD",
-  "HERRINGBONE",
-  "JERSEY",
-  "RIB",
-  "DOBBY",
-  "CANVAS",
-  "CREPE",
-]);
+  return {
+    interlacing: pick(lines[0], "grid", "diagonal"),
+    sheen: pick(lines[1], "matte", "glossy"),
+    density: pick(lines[2], "open", "dense"),
+  };
+}
 
-const FIBRES = new Set([
-  "cotton",
-  "linen",
-  "silk",
-  "wool",
-  "polyester",
-  "viscose",
-  "elastane",
-  "nylon",
-  "cupro",
-]);
+/**
+ * Binary answers → a catalogue weave, or nothing.
+ *
+ * Only the four weaves these questions can actually separate. Jacquard, dobby,
+ * herringbone, rib, canvas and crepe all return `null`, which means no weave
+ * filter at all — the honest outcome, and one the relaxation ladder already
+ * copes with. Guessing between ten weaves is the exact failure this replaced.
+ *
+ * A fourth question — knitted or woven — was tried and dropped: it called the
+ * twill swatch "knitted" while the interlacing question on the same request
+ * correctly said "diagonal". One unreliable answer outranking a reliable one is
+ * worse than not asking.
+ */
+export function composeWeave({ interlacing, sheen }: BinaryReading): string | null {
+  if (interlacing === "diagonal") return "TWILL";
+  if (interlacing !== "grid") return null;
+  return sheen === "glossy" ? "SATIN" : "PLAIN";
+}
 
 /**
  * Same bands the typed parser uses for "lightweight" and "heavy".
  *
- * Imported by value rather than shared with `nl-filters` because they are the
- * same numbers for a different reason — there they translate a word a buyer
- * wrote, here they translate a judgement about a picture. If one moves, it does
- * not follow that the other should.
+ * Held by value rather than shared with `nl-filters` because they are the same
+ * numbers for a different reason — there they translate a word a buyer wrote,
+ * here a judgement about a picture. If one moves, it does not follow that the
+ * other should.
  */
 const WEIGHT_BANDS = {
   light: { gsmMax: 160 },
-  medium: { gsmMin: 150, gsmMax: 280 },
   heavy: { gsmMin: 260 },
 } as const;
 
 const WITHHELD = [
   "GSM, composition and width are physical measurements — they come from the mill, not the photograph.",
+  "Fibre is not guessed here: cotton, viscose and spun polyester are near identical in a photo. The mill's spec sheet has it.",
   "Price, lead time and certification are supplier data.",
 ];
 
@@ -204,12 +227,6 @@ export function relaxationLadder(filters: ProductFilters): { filters: ProductFil
   return ladder;
 }
 
-function clean(value: string | undefined): string | null {
-  const v = value?.trim().toLowerCase();
-  if (!v || v === "unknown" || v === "n/a" || v === "none") return null;
-  return v;
-}
-
 function titleCase(s: string): string {
   return s.charAt(0).toUpperCase() + s.slice(1);
 }
@@ -249,57 +266,50 @@ export async function scanFabric(opts: {
   let mode: FabricScan["mode"] = "colour-only";
 
   if (visionAvailable()) {
-    const result = await completeVision({ prompt: SCAN_PROMPT, imageDataUri, maxTokens: 200 });
-    const raw = result ? parseJsonLoose<unknown>(result.content) : null;
-    const parsed = raw ? modelReading.safeParse(raw) : null;
+    // 24 tokens: three one-word lines and nothing else. A tight ceiling is part
+    // of the format — there is no room to drift into prose.
+    const result = await completeVision({ prompt: SCAN_PROMPT, imageDataUri, maxTokens: 24 });
+    const answers = result ? parseBinaryReading(result.content) : null;
 
-    if (parsed?.success) {
+    // At least one question has to have been answered in the offered form.
+    // Three nulls means the model replied with something else entirely, which
+    // is a miss, not a reading.
+    if (answers && (answers.interlacing || answers.sheen || answers.density)) {
       mode = "vision";
-      const { weave, weight, fibre, surface } = parsed.data;
 
-      const weaveValue = clean(weave)?.replace(/\s*weave$/, "").toUpperCase();
-      if (weaveValue && WEAVES.has(weaveValue)) {
+      const weave = composeWeave(answers);
+      if (weave) {
         readings.push({
           key: "weave",
           label: "Weave",
-          value: `${titleCase(weaveValue.toLowerCase())} weave`,
+          value: `${titleCase(weave.toLowerCase())} weave`,
+          // 8/8 on the two swatches it was tuned against, which is what earns
+          // "likely" and the right to filter. See docs/07_fabric_scan.md.
           certainty: "likely",
           source: "model",
         });
       }
 
-      const weightValue = clean(weight);
-      if (weightValue && weightValue in WEIGHT_BANDS) {
+      if (answers.density) {
         readings.push({
           key: "weight",
           label: "Weight",
-          value: titleCase(weightValue),
-          certainty: "likely",
-          source: "model",
-        });
-      }
-
-      const fibreValue = clean(fibre);
-      if (fibreValue && FIBRES.has(fibreValue)) {
-        readings.push({
-          key: "fibre",
-          label: "Likely fibre",
-          value: titleCase(fibreValue),
-          // Never better than uncertain, whatever the model sounds like. Cotton,
-          // viscose and spun polyester are close to indistinguishable in a
-          // photograph — the difference is a burn test or a lab, not a camera.
+          value: answers.density === "open" ? "Light and open" : "Dense",
+          // Deliberately never better than uncertain. "Open or dense" is a
+          // reasonable question to ask a photograph, but it is a proxy for
+          // weight rather than a reading of it, and both test swatches came
+          // back "dense" — not enough evidence to let it narrow the catalogue.
           certainty: "uncertain",
           source: "model",
-          note: "Not used to filter. Confirm the composition with the mill.",
+          note: "A visual impression, not a measurement. Not used to filter.",
         });
       }
 
-      const surfaceValue = clean(surface);
-      if (surfaceValue) {
+      if (answers.sheen) {
         readings.push({
           key: "surface",
           label: "Surface",
-          value: titleCase(surfaceValue.slice(0, 40)),
+          value: answers.sheen === "glossy" ? "Glossy, with sheen" : "Matte",
           certainty: "likely",
           source: "model",
           note: "Descriptive only.",
