@@ -32,7 +32,13 @@ export const PRODUCT_CARD_SELECT = {
   featured: true,
   category: { select: { name: true, slug: true } },
   supplier: { select: { businessName: true, slug: true, verified: true, city: true } },
-  colorways: { select: { id: true, name: true, hex: true }, orderBy: { position: "asc" } },
+  // `stockMetres` per colourway, not just on the product. The cart judges a
+  // line against the colourway's own stock, so any surface that lets a buyer
+  // pick a colour has to quote the same number the cart will check.
+  colorways: {
+    select: { id: true, name: true, hex: true, stockMetres: true },
+    orderBy: { position: "asc" },
+  },
   images: { select: { url: true, alt: true }, orderBy: { position: "asc" }, take: 1 },
 } satisfies Prisma.ProductSelect;
 

@@ -26,7 +26,7 @@ export type ScanMatch = {
   moqMetres: number;
   leadTimeDays: number;
   supplier: { businessName: string; city: string };
-  colorways: { id: string; name: string; hex: string }[];
+  colorways: { id: string; name: string; hex: string; stockMetres: number }[];
 };
 
 export type ScanReadingView = {
@@ -675,13 +675,24 @@ function Detail({ match, onClose }: { match: ScanMatch; onClose: () => void }) {
   // different match is a different instance.
   const [colourway, setColourway] = useState(match.colorways[0] ?? null);
 
-  const orderable = match.stockMetres >= match.moqMetres;
+  /**
+   * Stock for the colour actually selected, not the product total.
+   *
+   * `cart-service` computes availability as `colorway?.stockMetres ??
+   * product.stockMetres`, so the cart judges a line against the colourway. This
+   * panel was quoting the product total beside a colourway picker: a fabric
+   * with 11,000 m across six colours would promise all of it while the chosen
+   * colour held two hundred, and the line was only refused once it was already
+   * in the cart. Quote the number that will be checked.
+   */
+  const available = colourway?.stockMetres ?? match.stockMetres;
+  const orderable = available >= match.moqMetres;
 
   const specs: [string, string][] = [
     ["Weight", `${match.gsm} gsm`],
     ["Width", `${match.widthCm} cm`],
     ["Minimum order", formatMetres(match.moqMetres)],
-    ["In stock", formatMetres(match.stockMetres)],
+    [colourway ? `In stock · ${colourway.name}` : "In stock", formatMetres(available)],
     ["Lead time", `${match.leadTimeDays} days`],
     ["Composition", match.composition],
   ];
@@ -758,6 +769,15 @@ function Detail({ match, onClose }: { match: ScanMatch; onClose: () => void }) {
             </div>
           ))}
         </dl>
+
+        {/* A disabled button with no reason beside it is just a dead control. */}
+        {!orderable ? (
+          <p className="mt-5 rounded-[var(--radius-md)] border border-warn-line bg-warn-soft px-3.5 py-2.5 text-[12.5px] leading-relaxed text-ink">
+            {colourway ? `${colourway.name} has` : "This fabric has"} {formatMetres(available)} left, and the mill
+            needs {formatMetres(match.moqMetres)} to run an order.
+            {match.colorways.length > 1 ? " Another colourway may have more." : ""}
+          </p>
+        ) : null}
       </div>
 
       {/* Pushed apart: the primary action and a link away from it should not
