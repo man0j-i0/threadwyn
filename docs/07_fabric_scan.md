@@ -82,17 +82,44 @@ says so in plain words rather than showing an error.
 
 ### The colour tier
 
-The browser takes the **modal colour of the centre crop**, not a flat average.
-A flat average is wrong twice: a swatch photographed on a desk averages the desk
-in, and the mean of a patterned cloth lands on a colour that is nowhere in it.
-So: middle 60% of the frame, a coarse 3-D histogram, the fullest bucket, then
-the true mean of only the pixels inside it.
+A cloth in a photograph is one colour under uneven light. The job is to discard
+the lighting and keep the cloth, and it took two fixes to get there — both found
+by a real photo of undyed cotton coming back **"Powder Blue"**.
 
-Naming uses [`src/lib/colour.ts`](../src/lib/colour.ts) with **redmean**
-distance — a cheap perceptual approximation. Plain Euclidean RGB treats a shift
+**Measuring.** The browser crops to the middle 60% (losing the desk), sorts the
+pixels by luminance, and averages the **45th–75th percentile band**. That drops
+the shadowed valleys of the folds below and, on anything with sheen, the blown
+ridges above.
+
+The first version took the modal colour from a coarse RGB histogram. It was
+badly wrong: fixed-width buckets concentrate dark pixels into a handful of bins
+while spreading light ones across many, so the fullest bucket is biased toward
+shadow. On a warm ecru cloth it returned a cool near-navy. Across five test
+cloths, matte and satin, its total error was **962** against the band's **303**.
+
+An earlier candidate scored a perfect zero and was rejected for it — the band
+70–95% matched the synthetic exactly because that scene's brightest pixels were
+unshaded cloth *by construction*. Adding a satin with specular highlights sent
+it from best to nearly worst. A test you designed to pass is not evidence.
+
+**Naming.** [`src/lib/colour.ts`](../src/lib/colour.ts) uses **redmean**
+distance, a cheap perceptual approximation — plain Euclidean RGB treats a shift
 in blue as being as visible as the same shift in green, which pushes two
-near-identical neutrals apart; on a catalogue this full of ecrus and naturals
-that matters.
+near-identical neutrals apart, and this catalogue is full of ecrus and naturals.
+
+But redmean alone was still wrong, because **a swatch is flat colour and a photo
+is a lit object**. Every honest estimate reads darker than the swatch it should
+match, and that darkness dominated the score: warm ecru scored closer to Silver
+Grey than to Ecru — a hue error produced entirely by brightness. So
+`litDistance` rescales the measurement to each swatch's brightness before
+comparing, leaving colour rather than lighting, and adds back a small lightness
+term so a dim cloth cannot match a pale swatch of the same hue outright.
+
+That term has to be *small*. A 70-unit luminance gap is unremarkable indoors; at
+weight 0.35 it contributed 24 to the score while a near-perfect hue match
+contributed 2, which put undyed cotton back on Silver Grey. At **0.15** hue
+decides and lightness only breaks ties. Every swatch still matches itself
+exactly, Camel and Espresso stay apart, and a genuinely cool cloth stays cool.
 
 The palette is not hardcoded. `getColourwayPalette()` reads the distinct
 colourways **currently in stock on live products**, so the colour reported is

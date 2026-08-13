@@ -4,6 +4,7 @@ import {
   colourCertainty,
   colourDistance,
   hexToRgb,
+  litDistance,
   nearestSwatch,
   rgbToHex,
   type Swatch,
@@ -17,16 +18,27 @@ import {
  * name the catalogue can be searched for.
  */
 
-/** A slice of the real seeded palette, hexes included. */
+/**
+ * A slice of the real seeded palette.
+ *
+ * Silver Grey and Powder Blue earn their place: they are the two swatches a
+ * shaded warm cloth used to be misnamed as, so a regression here has something
+ * wrong to find.
+ */
 const PALETTE: Swatch[] = [
   { name: "Optic White", hex: "#F7F5F0" },
   { name: "Ecru", hex: "#E7DECC" },
   { name: "Natural", hex: "#DDD3C0" },
+  { name: "Silver Grey", hex: "#B7B8B5" },
+  { name: "Powder Blue", hex: "#BDCEDA" },
   { name: "Charcoal", hex: "#3A3A3C" },
   { name: "Navy", hex: "#1E2A44" },
   { name: "Terracotta", hex: "#B0603F" },
   { name: "Sage", hex: "#9BA88C" },
 ];
+
+/** The warm neutrals, any of which is a fair name for undyed cotton. */
+const WARM_NEUTRALS = ["Ecru", "Natural", "Optic White"];
 
 describe("hexToRgb", () => {
   it("parses six-digit hex with and without a hash", () => {
@@ -108,6 +120,59 @@ describe("nearestSwatch", () => {
   it("returns null when nothing is in stock", () => {
     expect(nearestSwatch({ r: 10, g: 10, b: 10 }, [])).toBeNull();
     expect(nearestSwatch({ r: 10, g: 10, b: 10 }, [{ name: "Broken", hex: "zz" }])).toBeNull();
+  });
+});
+
+describe("matching a lit photo against unlit swatches", () => {
+  /** Same colour, photographed dimmer. Illumination, not a different cloth. */
+  const dim = (hex: string, factor: number) => {
+    const rgb = hexToRgb(hex)!;
+    return { r: Math.round(rgb.r * factor), g: Math.round(rgb.g * factor), b: Math.round(rgb.b * factor) };
+  };
+
+  it("scores an exact match at zero", () => {
+    const ecru = hexToRgb("#E7DECC")!;
+    expect(litDistance(ecru, ecru)).toBe(0);
+  });
+
+  it("names a warm cloth warm even when it is photographed in shadow", () => {
+    // The reported bug: a photo of undyed cotton came back "Powder Blue".
+    // Under plain redmean a dimmed ecru scores nearer the mid-tone neutrals
+    // than Ecru, because brightness swamps hue. It is the same cloth either way.
+    for (const factor of [0.9, 0.8, 0.7, 0.6]) {
+      const match = nearestSwatch(dim("#E7DECC", factor), PALETTE);
+      expect(WARM_NEUTRALS, `at ${factor} brightness`).toContain(match!.name);
+    }
+  });
+
+  it("holds for a dark colour photographed brighter than the swatch", () => {
+    const match = nearestSwatch(dim("#1E2A44", 1.4), PALETTE);
+    expect(match?.name).toBe("Navy");
+  });
+
+  it("still separates colours that differ only in lightness", () => {
+    // Illumination tolerance must not collapse a pale swatch into a dark one of
+    // the same hue — a residual lightness term keeps these apart.
+    const light: Swatch[] = [
+      { name: "Camel", hex: "#B08D5E" },
+      { name: "Espresso", hex: "#362519" },
+    ];
+    expect(nearestSwatch(hexToRgb("#B08D5E")!, light)?.name).toBe("Camel");
+    expect(nearestSwatch(hexToRgb("#362519")!, light)?.name).toBe("Espresso");
+  });
+
+  it("keeps hue decisive over brightness", () => {
+    // Tolerating illumination must not blur hue. A genuinely neutral grey and a
+    // genuinely cool one still have to land on the neutral and the cool swatch,
+    // never on a warm neutral of similar brightness.
+    expect(nearestSwatch({ r: 184, g: 185, b: 182 }, PALETTE)?.name).toBe("Silver Grey");
+    expect(nearestSwatch({ r: 189, g: 206, b: 218 }, PALETTE)?.name).toBe("Powder Blue");
+    expect(nearestSwatch({ r: 155, g: 168, b: 140 }, PALETTE)?.name).toBe("Sage");
+  });
+
+  it("does not send a genuinely cool cloth to a warm swatch either", () => {
+    // The fix must not overcorrect: powder blue photographed dim is still blue.
+    expect(nearestSwatch(dim("#BDCEDA", 0.7), PALETTE)?.name).toBe("Powder Blue");
   });
 });
 

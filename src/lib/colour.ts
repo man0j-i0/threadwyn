@@ -52,10 +52,54 @@ export function colourDistance(a: Rgb, b: Rgb): number {
   );
 }
 
+/** Rec. 709 relative luminance. */
+export function luminance({ r, g, b }: Rgb): number {
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+}
+
+/**
+ * Distance that does not punish a colour for being photographed in shadow.
+ *
+ * A swatch is a flat colour; a photograph is a lit object. Every honest
+ * estimate of a folded cloth reads darker than the swatch it should match, and
+ * under plain redmean that darkness dominates — a warm ecru cloth in soft
+ * shadow came out nearer to Silver Grey than to Ecru, which is a hue error
+ * produced entirely by brightness.
+ *
+ * So the measurement is rescaled to the swatch's own brightness before being
+ * compared. What survives is the difference in colour rather than in lighting.
+ * A reduced lightness term stays in the sum so a dim cloth cannot match a pale
+ * swatch of the same hue outright — Espresso and Camel must not collapse
+ * together just because one is the other under-lit.
+ *
+ * The weight has to be small. A photograph of a cloth in ordinary indoor light
+ * reads far darker than the flat swatch — 70 luminance units is unremarkable —
+ * and at 0.35 that gap contributed 24 to the score while a near-perfect hue
+ * match contributed 2, which put undyed cotton back on Silver Grey. At 0.15
+ * hue decides and lightness only breaks ties. Every swatch in the palette still
+ * matches itself exactly, and Camel and Espresso stay apart.
+ */
+const LIGHTNESS_WEIGHT = 0.15;
+
+export function litDistance(measured: Rgb, swatch: Rgb): number {
+  const measuredLum = luminance(measured) || 1;
+  const scale = luminance(swatch) / measuredLum;
+
+  const scaled: Rgb = {
+    r: Math.min(255, measured.r * scale),
+    g: Math.min(255, measured.g * scale),
+    b: Math.min(255, measured.b * scale),
+  };
+
+  return (
+    colourDistance(scaled, swatch) + Math.abs(luminance(swatch) - measuredLum) * LIGHTNESS_WEIGHT
+  );
+}
+
 export type ColourMatch = {
   name: string;
   hex: string;
-  /** Redmean distance to the measured colour. Lower is closer. */
+  /** Illumination-tolerant distance to the measured colour. Lower is closer. */
   distance: number;
 };
 
@@ -66,7 +110,7 @@ export function nearestSwatch(measured: Rgb, palette: readonly Swatch[]): Colour
   for (const swatch of palette) {
     const rgb = hexToRgb(swatch.hex);
     if (!rgb) continue;
-    const distance = colourDistance(measured, rgb);
+    const distance = litDistance(measured, rgb);
     if (!best || distance < best.distance) {
       best = { name: swatch.name, hex: swatch.hex, distance };
     }
