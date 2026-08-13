@@ -1,12 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
-import { ArrowRight, ArrowsClockwise, Eyedropper, ImageSquare, UploadSimple } from "@phosphor-icons/react";
+import { ArrowRight, ArrowsClockwise, ImageSquare, UploadSimple } from "@phosphor-icons/react";
 
+import type { WeaveKey } from "@/lib/weave";
 import { cn, formatMetres, formatPerMetre, pluralise } from "@/lib/utils";
 import { Button, ButtonLink } from "@/components/ui/button";
+import { FabricSwatch } from "@/components/product/fabric-swatch";
 import { useToast } from "@/components/ui/toast";
 
 /* ── shapes returned by /api/v1/ai/fabric-scan ───────────────────────────── */
@@ -26,10 +28,13 @@ type Match = {
   id: string;
   slug: string;
   name: string;
+  weave: WeaveKey;
   gsm: number;
+  widthCm: number;
   pricePerMetre: number;
   stockMetres: number;
-  supplier: { businessName: string };
+  moqMetres: number;
+  supplier: { businessName: string; city: string };
   colorways: { id: string; name: string; hex: string }[];
 };
 
@@ -53,10 +58,17 @@ type ScanResult = {
 const MAX_BYTES = 8 * 1024 * 1024;
 const ACCEPT = ["image/jpeg", "image/png", "image/webp", "image/avif"];
 
+/**
+ * Certainty as tinted text, not a pill.
+ *
+ * Four bordered badges competed with the readings they were qualifying. The
+ * word still has to be there — a reading that is only "likely" must say so —
+ * but it is a footnote, and footnotes do not get chrome.
+ */
 const certaintyTone: Record<Certainty, string> = {
-  confident: "bg-positive-soft text-positive border-positive-line",
-  likely: "bg-brand-soft text-brand-ink border-brand-line",
-  uncertain: "bg-warn-soft text-warn border-warn-line",
+  confident: "text-positive",
+  likely: "text-brand-ink",
+  uncertain: "text-warn",
 };
 
 export function FabricScanner() {
@@ -128,10 +140,18 @@ export function FabricScanner() {
     [toast],
   );
 
+  // Three stages, and the page is laid out differently for each. Before a
+  // photo exists the upload is the only thing that matters, so it takes the
+  // full width and the explainer sits under it. While reading, the sample
+  // stays centre stage. Once there is a result the sample steps aside into a
+  // sticky column and the reading takes over.
+  const stage: "idle" | "reading" | "result" = result ? "result" : busy ? "reading" : "idle";
+  const split = stage === "result";
+
   return (
-    <div className="grid gap-8 lg:grid-cols-[minmax(0,380px)_1fr] lg:gap-12">
+    <div className={cn("grid gap-10", split && "lg:grid-cols-[minmax(0,400px)_1fr] lg:gap-14")}>
       {/* ── the sample ─────────────────────────────────────────────────── */}
-      <div className="lg:sticky lg:top-24 lg:self-start">
+      <div className={cn(split && "lg:sticky lg:top-24 lg:self-start")}>
         <label
           onDragOver={(e) => {
             e.preventDefault();
@@ -145,10 +165,28 @@ export function FabricScanner() {
             if (file) void run(file);
           }}
           className={cn(
-            "group relative block aspect-square w-full cursor-pointer overflow-hidden",
-            "rounded-[var(--radius-xl)] border border-dashed bg-surface transition-colors",
-            dragging ? "border-brand bg-brand-soft/50" : "border-line hover:border-brand-line",
-            busy && "cursor-wait",
+            "group relative block w-full overflow-hidden rounded-[var(--radius-xl)]",
+            "transition-[border-color,background-color,box-shadow,height] duration-500 ease-[var(--ease-out-expo)]",
+            // Full-bleed until it has done its job, then a portrait frame in
+            // the sidebar. Heights rather than aspect ratios, because a
+            // full-width 16:9 on a 1100px page is a 620px hole.
+            split ? "aspect-[4/5]" : "h-[320px] sm:h-[440px] lg:h-[520px]",
+            busy ? "cursor-wait" : "cursor-pointer",
+            preview
+              ? // Holding a photograph: a solid frame that sits above the page.
+                "border border-line-strong bg-surface shadow-[var(--shadow-md)]"
+              : // Empty: a well you drop into, so it reads as recessed rather
+                // than as another card. `border-line` was almost invisible in
+                // both themes — `line-strong` is the system's answer for a
+                // border that has to be seen, and the inset shadow gives the
+                // edge somewhere to fall away to.
+                cn(
+                  "border-2 border-dashed bg-sunken",
+                  "shadow-[inset_0_2px_14px_-6px_rgba(0,0,0,0.22)]",
+                  dragging
+                    ? "border-brand bg-brand-soft/60 shadow-[inset_0_2px_18px_-6px_rgba(0,0,0,0.24)]"
+                    : "border-line-strong hover:border-brand-line",
+                ),
           )}
         >
           <input
@@ -169,25 +207,49 @@ export function FabricScanner() {
             // eslint-disable-next-line @next/next/no-img-element
             <img src={preview} alt="Your fabric sample" className="absolute inset-0 size-full object-cover" />
           ) : (
-            <span className="absolute inset-0 grid place-items-center px-8 text-center">
-              <span>
-                <ImageSquare size={26} weight="light" className="mx-auto text-subtle" />
-                <span className="mt-3 block text-[14px] font-medium text-ink">Drop a fabric photo</span>
-                <span className="mt-1.5 block text-[12.5px] leading-relaxed text-subtle">
-                  Or click to browse. A close-up of the weave reads best.
+            <>
+              {/* Real cloth behind the prompt rather than an empty rectangle.
+                  It is the same renderer the catalogue uses, so the texture is
+                  a woven structure and not a stock pattern. */}
+              {/* Warp and weft at a fixed 7px, in CSS rather than SVG.
+                  `FabricSwatch` was the obvious choice and the wrong one: it
+                  slices a 400px viewBox to fill its box, so across a 1020px
+                  dropzone the tile magnified into a transparency-grid
+                  checkerboard — the single texture a fabric app must not show.
+                  A repeating gradient is pinned to real pixels, so the thread
+                  count looks the same at any width. */}
+              <span
+                aria-hidden
+                className="absolute inset-0 opacity-50 transition-opacity duration-500 group-hover:opacity-75"
+                style={{
+                  backgroundImage:
+                    "repeating-linear-gradient(90deg, var(--line-strong) 0 1px, transparent 1px 7px)," +
+                    "repeating-linear-gradient(0deg, var(--line-strong) 0 1px, transparent 1px 7px)",
+                }}
+              />
+              <Reticle />
+              <span className="absolute inset-0 grid place-items-center px-8 text-center">
+                <span>
+                  <span className="mx-auto grid size-14 place-items-center rounded-full border border-line bg-surface/80 backdrop-blur-sm transition-transform duration-500 ease-[var(--ease-out-expo)] group-hover:-translate-y-0.5">
+                    <ImageSquare size={22} weight="light" className="text-brand-ink" />
+                  </span>
+                  <span className="font-display mt-5 block text-[22px] tracking-[-0.015em] text-ink">
+                    Drop a fabric photo
+                  </span>
+                  <span className="mt-2 block text-[13px] text-subtle">A close-up of the weave reads best</span>
                 </span>
               </span>
-            </span>
+            </>
           )}
 
-          <AnimatePresence>{busy ? <ScanSweep /> : null}</AnimatePresence>
+          <AnimatePresence>{busy ? <AnalysisOverlay /> : null}</AnimatePresence>
         </label>
 
-        <div className="mt-4 flex items-center gap-2">
+        <div className="mt-5 flex flex-wrap items-center gap-2">
           <Button
             type="button"
             variant={preview ? "secondary" : "primary"}
-            size="sm"
+            size={split ? "sm" : "md"}
             loading={busy}
             icon={!busy ? <UploadSimple size={14} weight="bold" /> : undefined}
             onClick={() => inputRef.current?.click()}
@@ -199,30 +261,56 @@ export function FabricScanner() {
               Clear
             </Button>
           ) : null}
+          <span className="text-[12px] text-subtle">Read once, then discarded. Never stored.</span>
         </div>
-
-        <p className="mt-4 text-[12px] leading-relaxed text-subtle">
-          Your photo is read once and discarded. Threadwyn never stores it.
-        </p>
       </div>
 
       {/* ── the reading ────────────────────────────────────────────────── */}
       <div className="min-w-0">
-        {!result && !busy ? <Primer /> : null}
-        {busy ? <ReadingSkeleton /> : null}
-        {result && !busy ? <Reading result={result} /> : null}
+        {stage === "idle" ? <Primer /> : null}
+        {stage === "result" && result ? <Reading result={result} /> : null}
       </div>
     </div>
+  );
+}
+
+/** Four corner marks. Frames the drop area as something to be read, not filled. */
+function Reticle() {
+  const corners = [
+    "top-4 left-4 border-t border-l",
+    "top-4 right-4 border-t border-r",
+    "bottom-4 left-4 border-b border-l",
+    "bottom-4 right-4 border-b border-r",
+  ];
+  return (
+    <span aria-hidden className="pointer-events-none absolute inset-0">
+      {corners.map((c) => (
+        <span
+          key={c}
+          className={cn(
+            // `brand-line` resting was dark green on a dark surface and simply
+            // did not appear. The corners only carry the brand once they are
+            // reacting to a pointer.
+            "absolute size-6 border-line-strong transition-all duration-500 ease-[var(--ease-out-expo)]",
+            "group-hover:size-8 group-hover:border-brand",
+            c,
+          )}
+        />
+      ))}
+    </span>
   );
 }
 
 /* ── result ──────────────────────────────────────────────────────────────── */
 
 function Reading({ result }: { result: ScanResult }) {
+  const colour = result.readings.find((r) => r.key === "colour");
+  const inferred = result.readings.filter((r) => r.key !== "colour").slice(0, 3);
+
   return (
     <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35 }}>
       <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-        <h2 className="font-display text-[22px] font-medium tracking-[-0.01em] text-ink">What we can see</h2>
+        <h2 className="font-display text-[24px] font-medium tracking-[-0.015em] text-ink">What we can see</h2>
         <p className="font-mono text-[11px] text-subtle">
           {result.mode === "vision" ? result.model : "colour only"}
         </p>
@@ -235,54 +323,51 @@ function Reading({ result }: { result: ScanResult }) {
         </p>
       ) : null}
 
-      <div className="mt-5 grid gap-3 sm:grid-cols-2">
-        {result.readings.map((r) => (
-          <div key={r.key} className="rounded-[var(--radius-lg)] border border-line bg-surface p-4">
-            <div className="flex items-center justify-between gap-3">
-              <p className="text-[12px] text-subtle">{r.label}</p>
-              <span
-                className={cn(
-                  "rounded-full border px-2 py-0.5 font-mono text-[10px] tracking-[0.04em] uppercase",
-                  certaintyTone[r.certainty],
-                )}
-              >
-                {r.certainty}
-              </span>
-            </div>
-
-            <p className="mt-1.5 flex items-center gap-2 text-[16px] font-medium text-ink">
-              {r.key === "colour" && result.matchedHex ? (
+      {/* One panel, not four equal cards.
+          Colour leads because it is the only reading that is measured rather
+          than inferred, and the only one that reaches the catalogue as a real
+          colourway. Four same-size boxes gave a guess about sheen the same
+          weight as a measurement, and the page failed the squint test. */}
+      {colour ? (
+        <section className="mt-5 overflow-hidden rounded-[var(--radius-xl)] border border-line bg-surface">
+          <div className="flex items-center gap-5 p-5 sm:gap-6 sm:p-6">
+            <span
+              aria-hidden
+              className="size-20 shrink-0 rounded-[var(--radius-lg)] border border-line shadow-[0_1px_3px_rgba(0,0,0,0.06)] sm:size-24"
+              style={{ background: result.matchedHex ?? result.measuredHex }}
+            />
+            <div className="min-w-0">
+              <p className="text-[12px] text-subtle">Closest colourway in stock</p>
+              <p className="font-display mt-1 truncate text-[26px] leading-tight tracking-[-0.015em] text-ink sm:text-[30px]">
+                {colour.value}
+              </p>
+              <p className="mt-1.5 flex items-center gap-1.5 font-mono text-[11px] text-subtle">
                 <span
                   aria-hidden
-                  className="size-4 shrink-0 rounded-full border border-line"
-                  style={{ background: result.matchedHex }}
+                  className="size-3 rounded-[2px] border border-line"
+                  style={{ background: result.measuredHex }}
                 />
-              ) : null}
-              {r.value}
-            </p>
-
-            {r.note ? <p className="mt-1.5 text-[11.5px] leading-relaxed text-subtle">{r.note}</p> : null}
+                {result.measuredHex} measured
+                <span className={cn("ml-1", certaintyTone[colour.certainty])}>{colour.certainty}</span>
+              </p>
+            </div>
           </div>
-        ))}
-      </div>
 
-      {/* Why the colour is trustworthy: show the measurement, not just the name. */}
-      <div className="mt-3 flex items-center gap-3 rounded-[var(--radius-md)] border border-line bg-sunken px-3.5 py-2.5">
-        <Eyedropper size={14} className="shrink-0 text-subtle" />
-        <div className="flex items-center gap-1.5">
-          <span
-            aria-hidden
-            className="size-4 rounded-sm border border-line"
-            style={{ background: result.measuredHex }}
-          />
-          <span className="font-mono text-[11px] text-subtle">{result.measuredHex}</span>
-        </div>
-        <span className="text-[12px] text-subtle">measured from your photo</span>
-      </div>
+          {inferred.length ? (
+            <dl className="grid grid-cols-3 divide-x divide-line border-t border-line">
+              {inferred.map((r) => (
+                <div key={r.key} className="px-4 py-4 sm:px-5">
+                  <dt className="text-[11.5px] text-subtle">{r.label}</dt>
+                  <dd className="mt-1 truncate text-[15px] font-medium text-ink sm:text-[16px]">{r.value}</dd>
+                  <dd className={cn("mt-0.5 font-mono text-[10px]", certaintyTone[r.certainty])}>{r.certainty}</dd>
+                </div>
+              ))}
+            </dl>
+          ) : null}
+        </section>
+      ) : null}
 
-      <p className="mt-4 text-[12.5px] leading-relaxed text-muted">
-        {result.withheld.join(" ")}
-      </p>
+      <p className="mt-3.5 text-[12.5px] leading-relaxed text-subtle">{result.withheld[0]}</p>
 
       {/* ── matches ──────────────────────────────────────────────────── */}
       <div className="mt-9">
@@ -328,34 +413,64 @@ function Reading({ result }: { result: ScanResult }) {
 
         {result.matches.length ? (
           <>
-            <ul className="mt-4 space-y-2">
-              {result.matches.map((m) => (
+            {/* The payoff, sized like it. These were thin rows under a wall of
+                caveats, which put the least important thing on the page at the
+                top and the reason the buyer came at the bottom. Each card now
+                renders the actual cloth — `FabricSwatch` draws the real weave
+                at the real colour, so a twill looks like a twill. */}
+            <ul className="mt-5 grid gap-4 sm:grid-cols-2">
+              {result.matches.map((m, i) => (
                 <li key={m.id}>
                   <Link
                     href={`/product/${m.slug}`}
-                    className="group flex items-center gap-4 rounded-[var(--radius-lg)] border border-line bg-surface p-3.5 transition-colors hover:border-brand-line hover:bg-brand-soft/30"
+                    className={cn(
+                      "group flex h-full flex-col overflow-hidden rounded-[var(--radius-xl)] border bg-surface",
+                      "transition-[border-color,box-shadow] duration-300 ease-[var(--ease-out-expo)]",
+                      "hover:border-brand-line hover:shadow-[0_6px_20px_-8px_rgba(0,0,0,0.18)]",
+                      // The exact hit leads and is marked; the rest are near misses.
+                      i === 0 && result.exact > 0 ? "border-brand-line" : "border-line",
+                    )}
                   >
-                    <span
-                      aria-hidden
-                      className="size-10 shrink-0 rounded-[var(--radius-sm)] border border-line"
-                      style={{ background: m.colorways[0]?.hex ?? "var(--sunken)" }}
-                    />
-                    <span className="min-w-0 flex-1">
-                      <span className="block truncate text-[14px] font-medium text-ink">{m.name}</span>
-                      <span className="mt-0.5 block truncate text-[12px] text-subtle">
-                        {m.supplier.businessName} · {m.gsm} gsm · {formatMetres(m.stockMetres)} in stock
+                    <span className="relative block aspect-[16/10] overflow-hidden bg-sunken">
+                      <FabricSwatch
+                        weave={m.weave}
+                        hex={m.colorways[0]?.hex ?? "#C9C2B4"}
+                        gsm={m.gsm}
+                        seed={m.slug}
+                        alt={`${m.name} in ${m.colorways[0]?.name ?? "its first colourway"}`}
+                        className="transition-transform duration-500 ease-[var(--ease-out-expo)] group-hover:scale-[1.03]"
+                      />
+                      {i === 0 && result.exact > 0 ? (
+                        <span className="absolute top-3 left-3 rounded-full bg-brand px-2.5 py-1 font-mono text-[10px] tracking-[0.04em] text-white uppercase">
+                          Closest
+                        </span>
+                      ) : null}
+                    </span>
+
+                    <span className="flex flex-1 flex-col p-4 sm:p-5">
+                      <span className="font-display block text-[17px] leading-snug tracking-[-0.01em] text-ink">
+                        {m.name}
+                      </span>
+                      <span className="mt-1 block truncate text-[12.5px] text-subtle">
+                        {m.supplier.businessName} · {m.supplier.city}
+                      </span>
+
+                      <span className="mt-auto flex items-end justify-between gap-3 border-t border-line pt-3.5">
+                        <span className="font-mono text-[11.5px] leading-relaxed text-subtle tnum">
+                          {m.gsm} gsm · {m.widthCm} cm
+                          <br />
+                          {formatMetres(m.stockMetres)} in stock
+                        </span>
+                        <span className="text-right">
+                          <span className="font-mono block text-[17px] leading-none text-ink tnum">
+                            {formatPerMetre(m.pricePerMetre)}
+                          </span>
+                          <span className="mt-1.5 block font-mono text-[10.5px] text-subtle tnum">
+                            min {formatMetres(m.moqMetres)}
+                          </span>
+                        </span>
                       </span>
                     </span>
-                    <span className="shrink-0 text-right">
-                      <span className="block font-mono text-[13px] text-ink tnum">
-                        {formatPerMetre(m.pricePerMetre)}
-                      </span>
-                    </span>
-                    <ArrowRight
-                      size={14}
-                      weight="bold"
-                      className="shrink-0 text-subtle transition-transform group-hover:translate-x-0.5"
-                    />
                   </Link>
                 </li>
               ))}
@@ -390,69 +505,134 @@ function formatList(items: string[]): string {
 
 /* ── idle + loading ──────────────────────────────────────────────────────── */
 
+/**
+ * The idle state. Three lines, not three paragraphs — this is read once, while
+ * the visitor is looking for the upload control, and it competes with nothing.
+ */
 function Primer() {
   const steps = [
-    ["Measured in your browser", "The dominant colour is read off the pixels and matched to a colourway in stock."],
-    ["Read by a vision model", "Weave, weight and a likely fibre — only what a camera can actually resolve."],
-    ["Searched like any other query", "Both become ordinary filters and run through the same marketplace search."],
+    ["Colour", "measured from your pixels, matched to a colourway in stock"],
+    ["Weave", "read by a vision model — only what a camera can resolve"],
+    ["Matches", "the same filters and search the marketplace runs"],
   ];
 
   return (
     <div>
-      <h2 className="font-display text-[22px] font-medium tracking-[-0.01em] text-ink">How a scan works</h2>
-      <ol className="mt-5 space-y-4">
-        {steps.map(([title, body], i) => (
-          <li key={title} className="flex gap-4">
-            <span className="mt-0.5 grid size-6 shrink-0 place-items-center rounded-full border border-line bg-surface font-mono text-[11px] text-subtle tnum">
-              {i + 1}
-            </span>
-            <div className="min-w-0">
-              <p className="text-[14px] font-medium text-ink">{title}</p>
-              <p className="mt-1 text-[13px] leading-relaxed text-muted">{body}</p>
-            </div>
-          </li>
+      <h2 className="font-display text-[24px] font-medium tracking-[-0.015em] text-ink">How a scan works</h2>
+
+      {/* Three across rather than three stacked. Full-width rows under a
+          full-width dropzone left each line trailing 700px of empty page. */}
+      <dl className="mt-6 grid gap-x-10 gap-y-6 sm:grid-cols-3">
+        {steps.map(([term, detail]) => (
+          <div key={term} className="border-t border-line-strong pt-4">
+            <dt className="font-display text-[19px] tracking-[-0.01em] text-ink">{term}</dt>
+            <dd className="mt-1.5 text-[13.5px] leading-relaxed text-muted">{detail}</dd>
+          </div>
         ))}
-      </ol>
-      <p className="mt-7 text-[12.5px] leading-relaxed text-subtle">
-        GSM, composition and price are never inferred from a photograph. Those come from the mill.
+      </dl>
+
+      <p className="mt-8 text-[12.5px] leading-relaxed text-subtle">
+        GSM, composition and price come from the mill, never from a photograph.
       </p>
     </div>
   );
 }
 
-function ReadingSkeleton() {
-  return (
-    <div aria-live="polite" aria-busy>
-      <div className="h-6 w-44 animate-pulse rounded bg-sunken" />
-      <div className="mt-5 grid gap-3 sm:grid-cols-2">
-        {[0, 1, 2, 3].map((i) => (
-          <div key={i} className="rounded-[var(--radius-lg)] border border-line bg-surface p-4">
-            <div className="h-3 w-16 animate-pulse rounded bg-sunken" />
-            <div className="mt-3 h-4 w-28 animate-pulse rounded bg-sunken" />
-          </div>
-        ))}
-      </div>
-      <p className="mt-5 text-[13px] text-subtle">Reading the weave…</p>
-    </div>
-  );
-}
+// No result skeleton. While the scan runs the sample holds the full width and
+// there is no second column to hold a placeholder's shape — the overlay on the
+// photograph is the loading state, and a skeleton beside it would be a second
+// answer to the same question.
 
-/** A single line travelling down the sample, like a flatbed scanner. */
-function ScanSweep() {
+const PHASES = ["Measuring colour", "Reading the weave", "Matching the catalogue"];
+
+const WARP_COUNT = 16;
+const WEFT_COUNT = 10;
+
+/**
+ * The sample is woven over while it is read.
+ *
+ * The app already owns this gesture — the checkout overlay strings a warp and
+ * throws weft across it — so the scan borrows the same vocabulary rather than
+ * inventing a second loading language. Warp threads are strung once; picks then
+ * travel across on a loop, which is what a loom actually does and what makes
+ * the wait read as work rather than as a stall.
+ *
+ * Only `scaleX`, `scaleY` and `opacity` animate, so the whole thing stays on
+ * the compositor. An earlier version translated a gradient band by a percentage
+ * of *its own* height and crawled a fifth of the way down before repeating —
+ * the reason this is built from origin-anchored scales instead.
+ */
+function AnalysisOverlay() {
+  const [phase, setPhase] = useState(0);
+
+  useEffect(() => {
+    const id = window.setInterval(
+      () => setPhase((p) => (p + 1 < PHASES.length ? p + 1 : p)),
+      1500,
+    );
+    return () => window.clearInterval(id);
+  }, []);
+
   return (
     <motion.span
       aria-hidden
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="absolute inset-0 overflow-hidden bg-ink/10"
+      transition={{ duration: 0.35 }}
+      className="absolute inset-0 overflow-hidden bg-ink/45 backdrop-blur-[1.5px]"
     >
-      <motion.span
-        className="absolute inset-x-0 h-16 bg-gradient-to-b from-transparent via-brand/45 to-transparent"
-        initial={{ y: "-20%" }}
-        animate={{ y: "120%" }}
-        transition={{ duration: 1.5, repeat: Infinity, ease: "linear" }}
-      />
+      {Array.from({ length: WARP_COUNT }, (_, i) => (
+        <motion.span
+          key={`warp-${i}`}
+          className="absolute inset-y-0 w-px origin-top bg-white/20"
+          style={{ left: `${((i + 0.5) / WARP_COUNT) * 100}%` }}
+          initial={{ scaleY: 0 }}
+          animate={{ scaleY: 1 }}
+          transition={{ duration: 0.55, delay: i * 0.03, ease: [0.16, 1, 0.3, 1] }}
+        />
+      ))}
+
+      {Array.from({ length: WEFT_COUNT }, (_, i) => (
+        <motion.span
+          key={`weft-${i}`}
+          className="absolute inset-x-0 h-px origin-left bg-brand"
+          style={{ top: `${((i + 0.5) / WEFT_COUNT) * 100}%` }}
+          initial={{ scaleX: 0, opacity: 0 }}
+          animate={{ scaleX: [0, 1, 1], opacity: [0, 0.95, 0] }}
+          transition={{
+            duration: 2.1,
+            delay: 0.45 + i * 0.11,
+            repeat: Infinity,
+            repeatDelay: 0.35,
+            ease: [0.16, 1, 0.3, 1],
+          }}
+        />
+      ))}
+
+      <span className="absolute inset-x-0 bottom-0 p-5 sm:p-6">
+        <AnimatePresence mode="wait">
+          <motion.span
+            key={phase}
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
+            className="block font-mono text-[11px] tracking-[0.09em] text-white uppercase"
+          >
+            {PHASES[phase]}
+          </motion.span>
+        </AnimatePresence>
+
+        <span className="mt-3 block h-px w-full overflow-hidden bg-white/25">
+          <motion.span
+            className="block h-px origin-left bg-brand"
+            initial={{ scaleX: 0 }}
+            animate={{ scaleX: 1 }}
+            transition={{ duration: 5, ease: [0.16, 1, 0.3, 1] }}
+          />
+        </span>
+      </span>
     </motion.span>
   );
 }

@@ -227,6 +227,52 @@ export function relaxationLadder(filters: ProductFilters): { filters: ProductFil
   return ladder;
 }
 
+/* ── mock tier ───────────────────────────────────────────────────────────── */
+
+/**
+ * Work on the interface without spending inference.
+ *
+ * Only the model call is faked. The colour is still measured from the real
+ * pixels, `composeWeave` still classifies, the relaxation ladder still runs and
+ * the catalogue is still searched — so what you are looking at is the real
+ * pipeline with one network call removed, not a screenshot.
+ *
+ *   FABRIC_SCAN_MOCK=1            a canned reading, varying by photo
+ *   FABRIC_SCAN_MOCK=colour-only  the model tier "fails", to design the fallback
+ *
+ * **Ignored in production, unconditionally.** A demo that quietly served canned
+ * readings would be worse than one that fell back to colour, so the env var
+ * cannot reach the deployment even if it is set there by accident.
+ */
+type MockMode = "off" | "vision" | "colour-only";
+
+const MOCK_LATENCY_MS = 2600;
+
+function mockMode(): MockMode {
+  if (process.env.NODE_ENV === "production") return "off";
+
+  const raw = process.env.FABRIC_SCAN_MOCK?.trim().toLowerCase();
+  if (!raw || raw === "0" || raw === "false" || raw === "off") return "off";
+  if (raw === "fail" || raw === "colour-only") return "colour-only";
+  return "vision";
+}
+
+/**
+ * Different photos give different weaves, keyed off the measured colour.
+ *
+ * A single hardcoded answer would have made every scan render the same card,
+ * which is exactly the state a UI pass needs to avoid — plain, twill and satin
+ * lay out differently and reach different corners of the catalogue.
+ */
+function mockAnswer(measured: Rgb): string {
+  const answers = [
+    "grid\nmatte\ndense", // → PLAIN
+    "diagonal\nmatte\nopen", // → TWILL
+    "grid\nglossy\ndense", // → SATIN
+  ];
+  return answers[(measured.r + measured.g + measured.b) % answers.length]!;
+}
+
 function titleCase(s: string): string {
   return s.charAt(0).toUpperCase() + s.slice(1);
 }
@@ -264,12 +310,24 @@ export async function scanFabric(opts: {
   /* ── tier 2: the model ───────────────────────────────────────────────── */
 
   let mode: FabricScan["mode"] = "colour-only";
+  const mock = mockMode();
 
-  if (visionAvailable()) {
-    // 24 tokens: three one-word lines and nothing else. A tight ceiling is part
-    // of the format — there is no room to drift into prose.
-    const result = await completeVision({ prompt: SCAN_PROMPT, imageDataUri, maxTokens: 24 });
-    const answers = result ? parseBinaryReading(result.content) : null;
+  if (mock !== "off" || visionAvailable()) {
+    let raw: string | null;
+
+    if (mock !== "off") {
+      // Held long enough for all three captions of the analysis overlay to
+      // play, so the wait can be designed against something honest.
+      await new Promise((resolve) => setTimeout(resolve, MOCK_LATENCY_MS));
+      raw = mock === "colour-only" ? null : mockAnswer(measured);
+    } else {
+      // 24 tokens: three one-word lines and nothing else. A tight ceiling is
+      // part of the format — there is no room to drift into prose.
+      const result = await completeVision({ prompt: SCAN_PROMPT, imageDataUri, maxTokens: 24 });
+      raw = result?.content ?? null;
+    }
+
+    const answers = raw !== null ? parseBinaryReading(raw) : null;
 
     // At least one question has to have been answered in the offered form.
     // Three nulls means the model replied with something else entirely, which
@@ -351,7 +409,11 @@ export async function scanFabric(opts: {
     chips: chipsFor(filters),
     href: hrefFor(filters),
     mode,
-    model: mode === "vision" ? visionLabel() : "measured colour only",
+    // Never claim a model answered when it did not. The page prints this, and
+    // a mocked run showing "google/gemma-3-27b-it" would be a lie told to the
+    // person building against it.
+    model:
+      mode === "vision" ? (mock === "off" ? visionLabel() : "mock reading") : "measured colour only",
     measuredHex: rgbToHex(measured),
     matchedHex: swatch?.hex ?? null,
     withheld: WITHHELD,

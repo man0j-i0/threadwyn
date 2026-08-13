@@ -20,14 +20,15 @@ export default function ScanPage() {
   return (
     <>
       <div className="mx-auto max-w-[1100px] px-4 py-8 sm:px-6 lg:px-10 lg:py-12">
-        <header className="mb-9 max-w-2xl">
-          <p className="eyebrow text-accent">Fabric scan</p>
-          <h1 className="font-display mt-3 text-3xl leading-[1.1] font-medium tracking-[-0.02em] text-ink sm:text-[2.5rem]">
+        {/* No eyebrow. "FABRIC SCAN" over "Show us the cloth" was a label
+            explaining a heading that already explains itself, and the brief
+            asked for less text, not more scaffolding. */}
+        <header className="mb-10 max-w-2xl">
+          <h1 className="font-display text-[2.5rem] leading-[1.05] font-medium tracking-[-0.025em] text-ink sm:text-[3.25rem]">
             Show us the cloth
           </h1>
-          <p className="mt-3 text-[15px] leading-relaxed text-muted">
-            Upload a photo of a swatch and we&apos;ll read what a camera can honestly tell — colour, weave, weight —
-            then find the closest fabrics in stock.
+          <p className="mt-4 text-[16px] leading-relaxed text-muted">
+            Photograph a swatch. We&apos;ll read its colour and weave, then find what you can order.
           </p>
         </header>
 
