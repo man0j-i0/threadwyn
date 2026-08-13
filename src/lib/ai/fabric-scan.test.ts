@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { Swatch } from "@/lib/colour";
 
@@ -234,6 +234,54 @@ describe("what the model is not allowed to assert", () => {
     expect(result.withheld.join(" ")).toMatch(/GSM, composition and width/);
     expect(result.withheld.join(" ")).toMatch(/Price, lead time and certification/);
     expect(result.readings.some((r) => /\d+\s*gsm/i.test(r.value))).toBe(false);
+  });
+});
+
+describe("the mock tier cannot reach production", () => {
+  afterEach(() => vi.unstubAllEnvs());
+
+  it("ignores FABRIC_SCAN_MOCK entirely when NODE_ENV is production", async () => {
+    // The guard that matters. A deployment quietly serving canned readings
+    // would be worse than one that fell back to colour, so the flag is not
+    // merely defaulted off in production — it is unreadable there.
+    vi.stubEnv("NODE_ENV", "production");
+    vi.stubEnv("FABRIC_SCAN_MOCK", "1");
+    answers("diagonal", "matte", "dense");
+
+    const result = await scan();
+
+    expect(completeVision).toHaveBeenCalledTimes(1);
+    expect(result.model).toBe("google/gemma-3-27b-it");
+    expect(result.model).not.toBe("mock reading");
+  });
+
+  it("uses the mock in development when asked", async () => {
+    vi.stubEnv("NODE_ENV", "development");
+    vi.stubEnv("FABRIC_SCAN_MOCK", "1");
+    vi.useFakeTimers();
+
+    try {
+      const pending = scan();
+      // The mock holds long enough for the analysis overlay to play out.
+      await vi.advanceTimersByTimeAsync(3000);
+      const result = await pending;
+
+      expect(completeVision).not.toHaveBeenCalled();
+      expect(result.model).toBe("mock reading");
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("hits the real model when the flag is absent", async () => {
+    vi.stubEnv("NODE_ENV", "development");
+    vi.stubEnv("FABRIC_SCAN_MOCK", "");
+    answers("grid", "matte", "dense");
+
+    const result = await scan();
+
+    expect(completeVision).toHaveBeenCalledTimes(1);
+    expect(result.model).toBe("google/gemma-3-27b-it");
   });
 });
 

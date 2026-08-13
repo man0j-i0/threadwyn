@@ -9,7 +9,7 @@ import { ArrowRight, CaretLeft, CaretRight, Check, Plus } from "@phosphor-icons/
 import type { WeaveKey } from "@/lib/weave";
 import { cn, formatMetres, formatPerMetre } from "@/lib/utils";
 import { useAddToCart } from "@/lib/use-add-to-cart";
-import { Button, ButtonLink } from "@/components/ui/button";
+import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { FabricSwatch } from "@/components/product/fabric-swatch";
 
@@ -294,19 +294,27 @@ function Summary({
   const weave = rest.find((r) => r.key === "weave");
 
   return (
-    <div className="shrink-0 border-b border-line px-6 py-5 sm:px-8 sm:py-6">
+    <div className="shrink-0 border-b border-line px-6 py-6 sm:px-8">
       <div className="flex items-start justify-between gap-4">
-        <div className="flex min-w-0 items-center gap-4">
+        <div className="flex min-w-0 items-start gap-4">
           <span
             aria-hidden
-            className="size-12 shrink-0 rounded-[var(--radius-lg)] border border-line shadow-[var(--shadow-xs)]"
+            className="mt-1 size-14 shrink-0 rounded-[var(--radius-lg)] border border-line shadow-[var(--shadow-xs)]"
             style={{ background: result.matchedHex ?? result.measuredHex }}
           />
+          {/* Colour and weave stacked, not joined by a middot. They are two
+              separate findings, and a single run-on line made the whole header
+              read as one sentence competing with the deck below it. */}
           <div className="min-w-0">
-            <p className="text-[12px] text-subtle">What we read</p>
-            <p className="font-display truncate text-[21px] leading-tight tracking-[-0.015em] text-ink sm:text-[24px]">
-              {[colour?.value, weave?.value].filter(Boolean).join(" · ") || "Colour only"}
+            <p className="eyebrow text-accent">Scan result</p>
+            <p className="font-display mt-2 truncate text-[26px] leading-[1.15] tracking-[-0.02em] text-ink sm:text-[30px]">
+              {colour?.value ?? "Colour only"}
             </p>
+            {weave ? (
+              <p className="font-display truncate text-[26px] leading-[1.15] tracking-[-0.02em] text-muted sm:text-[30px]">
+                {weave.value}
+              </p>
+            ) : null}
           </div>
         </div>
 
@@ -322,27 +330,46 @@ function Summary({
         ) : null}
       </div>
 
-      <dl className="mt-4 flex flex-wrap items-center gap-x-6 gap-y-2">
+      {/* A table, so the eye can run down a column. Certainty is a footnote
+          under each value rather than a word inline with it. */}
+      <dl className="mt-6 grid grid-cols-3 gap-x-6 border-t border-line pt-4">
         {rest.map((r) => (
-          <div key={r.key} className="flex items-baseline gap-2">
-            <dt className="text-[12px] text-subtle">{r.label}</dt>
-            <dd className="text-[13.5px] font-medium text-ink">{r.value}</dd>
-            <dd className={cn("font-mono text-[10px]", certaintyTone[r.certainty])}>{r.certainty}</dd>
+          <div key={r.key} className="min-w-0">
+            <dt className="text-[11.5px] text-subtle">{r.label}</dt>
+            <dd className="mt-1 truncate text-[14.5px] font-medium text-ink" title={r.value}>
+              {r.value}
+            </dd>
+            <dd className={cn("mt-1 font-mono text-[10px] tracking-[0.06em] uppercase", certaintyTone[r.certainty])}>
+              {r.certainty}
+            </dd>
           </div>
         ))}
-        <span className="ml-auto font-mono text-[10.5px] text-subtle">
-          {result.mode === "vision" ? result.model : "colour only"}
-        </span>
       </dl>
+
+      <p className="mt-4 font-mono text-[10.5px] tracking-[0.04em] text-subtle">{sourceLabel(result)}</p>
     </div>
   );
+}
+
+/**
+ * How the reading was produced, in the buyer's terms rather than a model id.
+ *
+ * A raw `google/gemma-3-27b-it` in the corner is developer output on a customer
+ * surface. What matters to a buyer is that this is an estimate from a picture,
+ * not a measurement. The mocked case still says so plainly — a demo that reads
+ * identically whether or not a model answered would be the dishonest option.
+ */
+function sourceLabel(result: ScanResultView): string {
+  if (result.mode !== "vision") return "Measured colour only · no model";
+  if (result.model === "mock reading") return "Sample reading · not live";
+  return "AI reading · visual estimate";
 }
 
 /* ── the deck ────────────────────────────────────────────────────────────── */
 
 const HEADLINE: Record<ScanResultView["quality"], { title: string; note: string }> = {
-  exact: { title: "Matched your swatch", note: "Every reading agrees. Open one for the full specification." },
-  near: { title: "Closest in stock", note: "Nothing matched every reading — these are the nearest." },
+  exact: { title: "Matched your swatch", note: "Closest fabrics based on the scan." },
+  near: { title: "Closest in stock", note: "Nothing matched every reading. These are the nearest." },
   // The ladder always returns rows, so without this the catalogue's most
   // popular fabrics would be presented as matches for a swatch they have
   // nothing to do with.
@@ -594,13 +621,19 @@ function Deck({
         <DeckButton direction="right" disabled={count < 2} onClick={() => step(1)} />
       </div>
 
+      {/* Quiet. The count is orientation, not a call to action, and a filled
+          button down here was competing with the cards for the same attention. */}
       <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
         <p className="font-mono text-[11px] text-subtle tnum">
-          {count ? `${index + 1} of ${count}` : "0"} · {total} in the catalogue
+          {count ? `${index + 1} of ${count}` : "0"} · {total} fabrics found
         </p>
-        <ButtonLink href={href} variant="secondary" size="sm" trailingIcon={<ArrowRight size={13} weight="bold" />}>
-          Open in the marketplace
-        </ButtonLink>
+        <Link
+          href={href}
+          className="group inline-flex items-center gap-1.5 text-[13px] text-brand-ink underline decoration-line underline-offset-4 transition-colors hover:decoration-brand"
+        >
+          View all
+          <ArrowRight size={12} weight="bold" className="transition-transform group-hover:translate-x-0.5" />
+        </Link>
       </div>
     </div>
   );
@@ -654,8 +687,11 @@ function Detail({ match, onClose }: { match: ScanMatch; onClose: () => void }) {
   ];
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
-      <div className="flex items-start justify-between gap-4 border-b border-line px-6 py-5 sm:px-7">
+    // Header and buy bar are pinned; only the specification scrolls. As one
+    // scrolling column the bar could be pushed off screen, and the scrollbar
+    // ran the full height of a rounded panel and clipped against its corners.
+    <div className="flex h-full min-h-0 flex-col">
+      <div className="flex shrink-0 items-start justify-between gap-4 border-b border-line px-6 py-5 sm:px-7">
         <div className="min-w-0">
           <p className="text-[12px] text-subtle">{match.supplier.businessName} · {match.supplier.city}</p>
           <h3 className="font-display mt-1 text-[22px] leading-tight tracking-[-0.015em] text-ink sm:text-[25px]">
@@ -672,7 +708,7 @@ function Detail({ match, onClose }: { match: ScanMatch; onClose: () => void }) {
         </button>
       </div>
 
-      <div className="px-6 py-6 sm:px-7">
+      <div className="scrollbar-slim min-h-0 flex-1 overflow-y-auto px-6 py-6 sm:px-7">
         <span className="block aspect-[4/3] overflow-hidden rounded-[var(--radius-lg)] border border-line bg-sunken">
           <FabricSwatch
             weave={match.weave}
@@ -724,7 +760,9 @@ function Detail({ match, onClose }: { match: ScanMatch; onClose: () => void }) {
         </dl>
       </div>
 
-      <div className="mt-auto flex flex-wrap items-center gap-3 border-t border-line px-6 py-5 sm:px-7">
+      {/* Pushed apart: the primary action and a link away from it should not
+          sit shoulder to shoulder as though they were a pair. */}
+      <div className="mt-auto flex shrink-0 flex-wrap items-center justify-between gap-3 border-t border-line px-6 py-5 sm:px-7">
         <Button
           type="button"
           // Stays disabled through the whole confirmation, not just the
@@ -747,10 +785,10 @@ function Detail({ match, onClose }: { match: ScanMatch; onClose: () => void }) {
 
         <Link
           href={`/product/${match.slug}`}
-          className="inline-flex items-center gap-1.5 text-[13px] text-brand-ink underline decoration-line underline-offset-4 transition-colors hover:decoration-brand"
+          className="group inline-flex items-center gap-1.5 text-[13px] text-brand-ink underline decoration-line underline-offset-4 transition-colors hover:decoration-brand"
         >
-          View more
-          <ArrowRight size={12} weight="bold" />
+          View product
+          <ArrowRight size={12} weight="bold" className="transition-transform group-hover:translate-x-0.5" />
         </Link>
       </div>
     </div>
