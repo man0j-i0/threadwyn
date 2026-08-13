@@ -133,7 +133,7 @@ export function FabricScanner() {
           </h2>
           {!split ? (
             <p className="mt-1.5 text-[13px] text-subtle">
-              A close-up of the weave reads best. Read once, then discarded — never stored.
+              Upload a close-up of your fabric and we&apos;ll find the closest matches.
             </p>
           ) : null}
 
@@ -156,8 +156,13 @@ export function FabricScanner() {
               // Full-bleed until it has done its job, then a portrait frame in
               // the sidebar. Heights rather than aspect ratios, because a
               // full-width 16:9 on a 1100px page is a 620px hole.
-              split ? "aspect-[4/5]" : "h-[320px] sm:h-[440px] lg:h-[520px]",
+              // Shorter than it was. With the texture gone and the control
+              // inside, the extra height was just air.
+              split ? "aspect-[4/5]" : "h-[260px] sm:h-[320px] lg:h-[360px]",
               busy ? "cursor-wait" : "cursor-pointer",
+              // The real input is visually hidden, so its focus ring has to be
+              // drawn by the well it belongs to or keyboard users get nothing.
+              "has-[input:focus-visible]:border-brand has-[input:focus-visible]:ring-2 has-[input:focus-visible]:ring-brand/30",
               preview
                 ? // Holding a photograph: a solid frame that sits above the page.
                   "border border-line-strong bg-surface shadow-[var(--shadow-md)]"
@@ -194,35 +199,40 @@ export function FabricScanner() {
               <img src={preview} alt="Your fabric sample" className="absolute inset-0 size-full object-cover" />
             ) : (
               <>
-                {/* Real cloth behind the prompt rather than an empty rectangle.
-                    It is the same renderer the catalogue uses, so the texture is
-                    a woven structure and not a stock pattern. */}
-                {/* Warp and weft at a fixed 7px, in CSS rather than SVG.
-                    `FabricSwatch` was the obvious choice and the wrong one: it
-                    slices a 400px viewBox to fill its box, so across a 1020px
-                    dropzone the tile magnified into a transparency-grid
-                    checkerboard — the single texture a fabric app must not show.
-                    A repeating gradient is pinned to real pixels, so the thread
-                    count looks the same at any width. */}
-                <span
-                  aria-hidden
-                  className="absolute inset-0 opacity-50 transition-opacity duration-500 group-hover:opacity-75"
-                  style={{
-                    backgroundImage:
-                      "repeating-linear-gradient(90deg, var(--line-strong) 0 1px, transparent 1px 7px)," +
-                      "repeating-linear-gradient(0deg, var(--line-strong) 0 1px, transparent 1px 7px)",
-                  }}
-                />
+                {/* No texture. A woven fill was the obvious idea for a fabric
+                    app and it read as a transparency checkerboard at every
+                    scale that mattered. The surface token is already the warm
+                    off-white the design system uses for a recessed well, and
+                    against the panel's white it carries the depth on its own —
+                    the corner marks are the only ornament that earns its place. */}
                 <Reticle />
                 <span className="absolute inset-0 grid place-items-center px-8 text-center">
                   <span>
-                    <span className="mx-auto grid size-14 place-items-center rounded-full border border-line bg-surface/80 backdrop-blur-sm transition-transform duration-500 ease-[var(--ease-out-expo)] group-hover:-translate-y-0.5">
+                    <span className="mx-auto grid size-14 place-items-center rounded-full border border-line-strong bg-surface transition-transform duration-500 ease-[var(--ease-out-expo)] group-hover:-translate-y-0.5">
                       <ImageSquare size={22} weight="light" className="text-brand-ink" />
                     </span>
-                    <span className="font-display mt-5 block text-[22px] tracking-[-0.015em] text-ink">
-                      Drop a fabric photo
+                    <span className="font-display mt-5 block text-[21px] tracking-[-0.015em] text-ink">
+                      Drop your fabric photo
                     </span>
-                    <span className="mt-2 block text-[13px] text-subtle">A close-up of the weave reads best</span>
+                    <span className="mt-2 block text-[12.5px] text-subtle">
+                      JPG or PNG · close-up works best
+                    </span>
+
+                    {/* Looks like a button, is not one. A real `<button>` here
+                        would be an interactive element inside the `<label>`
+                        that already opens the picker — one control, one target,
+                        and the whole well stays clickable. */}
+                    <span
+                      aria-hidden
+                      className={cn(
+                        "mt-6 inline-flex items-center gap-2 rounded-full bg-brand px-5 py-2.5",
+                        "text-[13px] font-medium text-white shadow-[var(--shadow-sm)]",
+                        "transition-transform duration-300 ease-[var(--ease-spring)] group-hover:-translate-y-px group-active:scale-95",
+                      )}
+                    >
+                      <UploadSimple size={14} weight="bold" />
+                      Choose a photo
+                    </span>
                   </span>
                 </span>
               </>
@@ -232,23 +242,27 @@ export function FabricScanner() {
           </label>
           </div>
 
-          <div className="mt-5 flex flex-wrap items-center gap-2">
-            <Button
-              type="button"
-              variant={preview ? "secondary" : "primary"}
-              size={split ? "sm" : "md"}
-              loading={busy}
-              icon={!busy ? <UploadSimple size={14} weight="bold" /> : undefined}
-              onClick={() => inputRef.current?.click()}
-            >
-              {busy ? "Reading the weave" : preview ? "Try another" : "Choose a photo"}
-            </Button>
-            {preview && !busy ? (
-              <Button type="button" variant="ghost" size="sm" onClick={reset} icon={<ArrowsClockwise size={14} />}>
-                Clear
+          {/* Nothing under an empty well — its own control is inside it, and a
+              second identical button below was the same action twice. */}
+          {preview ? (
+            <div className="mt-5 flex flex-wrap items-center gap-2">
+              <Button
+                type="button"
+                variant="secondary"
+                size={split ? "sm" : "md"}
+                loading={busy}
+                icon={!busy ? <UploadSimple size={14} weight="bold" /> : undefined}
+                onClick={() => inputRef.current?.click()}
+              >
+                {busy ? "Reading the weave" : "Try another"}
               </Button>
-            ) : null}
-          </div>
+              {!busy ? (
+                <Button type="button" variant="ghost" size="sm" onClick={reset} icon={<ArrowsClockwise size={14} />}>
+                  Clear
+                </Button>
+              ) : null}
+            </div>
+          ) : null}
         </section>
 
         {/* ── the reading ────────────────────────────────────────────────── */}
